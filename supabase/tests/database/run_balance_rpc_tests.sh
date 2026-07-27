@@ -12,17 +12,24 @@ ALEX='11111111-1111-1111-1111-111111111111'
 SAM='22222222-2222-2222-2222-222222222222'
 EXPENSE1='33333333-3333-3333-3333-333333333333'
 EXPENSE_SAM_PAID='77777777-7777-7777-7777-777777777777'
+PRIYA='44444444-4444-4444-4444-444444444444'
+TRIP_GROUP='55555555-5555-5555-5555-555555555555'
+EXPENSE2='66666666-6666-6666-6666-666666666666'
 
 pass_count=0
 fail_count=0
 
 cleanup() {
   supabase db query --linked "
-    delete from settlements where from_user in ('$ALEX','$SAM') or to_user in ('$ALEX','$SAM');
+    delete from settlements where group_id = '$TRIP_GROUP' or from_user in ('$ALEX','$SAM','$PRIYA') or to_user in ('$ALEX','$SAM','$PRIYA');
     delete from expense_splits where expense_id in ('$EXPENSE1', '$EXPENSE_SAM_PAID');
     delete from expenses where id in ('$EXPENSE1', '$EXPENSE_SAM_PAID');
-    delete from users where id in ('$ALEX','$SAM');
-    delete from auth.users where id in ('$ALEX','$SAM');
+    delete from expense_splits where expense_id = '$EXPENSE2';
+    delete from expenses where id = '$EXPENSE2';
+    delete from group_members where group_id = '$TRIP_GROUP';
+    delete from groups where id = '$TRIP_GROUP';
+    delete from users where id in ('$ALEX','$SAM','$PRIYA');
+    delete from auth.users where id in ('$ALEX','$SAM','$PRIYA');
   " > /dev/null 2>&1 || true
 }
 
@@ -91,6 +98,35 @@ supabase db query --linked "
 check "paid_by_b term reduces the balance correctly (Sam pays for groceries, Alex owes his 150 share, netting the current 200 down to 50)" \
   "get_friend_balance('$ALEX', '$SAM') = 50.00" \
   "get_friend_balance('$ALEX', '$SAM')"
+
+supabase db query --linked "
+  insert into auth.users (id) values ('$PRIYA');
+  insert into users (id, name) values ('$PRIYA', 'Priya');
+  insert into groups (id, name, created_by) values ('$TRIP_GROUP', 'Trip', '$ALEX');
+  insert into group_members (group_id, user_id) values
+    ('$TRIP_GROUP', '$ALEX'),
+    ('$TRIP_GROUP', '$SAM'),
+    ('$TRIP_GROUP', '$PRIYA');
+  insert into expenses (id, group_id, paid_by, description, amount, expense_date, created_by)
+  values ('$EXPENSE2', '$TRIP_GROUP', '$ALEX', 'Cabin', 300.00, current_date, '$ALEX');
+  insert into expense_splits (expense_id, user_id, share_amount) values
+    ('$EXPENSE2', '$ALEX', 100.00),
+    ('$EXPENSE2', '$SAM', 100.00),
+    ('$EXPENSE2', '$PRIYA', 100.00);
+" > /dev/null
+
+check "Two simplified transactions settle a three-person group" \
+  "(select count(*)::int from get_group_debts('$TRIP_GROUP')) = 2" \
+  "(select count(*)::int from get_group_debts('$TRIP_GROUP'))"
+
+supabase db query --linked "
+  insert into settlements (group_id, from_user, to_user, amount, status, confirmed_at)
+  values ('$TRIP_GROUP', '$SAM', '$ALEX', 100.00, 'confirmed', now());
+" > /dev/null
+
+check "A confirmed group settlement removes that debtor from the simplified list, leaving only Priya owing Alex 100" \
+  "(select count(*) from get_group_debts('$TRIP_GROUP') where from_user = '$PRIYA' and to_user = '$ALEX' and amount = 100.00) = 1 and (select count(*) from get_group_debts('$TRIP_GROUP')) = 1" \
+  "(select array_agg(row(from_user, to_user, amount)) from get_group_debts('$TRIP_GROUP'))"
 
 echo "$pass_count passed, $fail_count failed"
 [[ "$fail_count" -eq 0 ]]
