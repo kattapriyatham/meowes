@@ -15,6 +15,7 @@ EXPENSE_SAM_PAID='77777777-7777-7777-7777-777777777777'
 PRIYA='44444444-4444-4444-4444-444444444444'
 TRIP_GROUP='55555555-5555-5555-5555-555555555555'
 EXPENSE2='66666666-6666-6666-6666-666666666666'
+EMPTY_GROUP='88888888-8888-8888-8888-888888888888'
 
 pass_count=0
 fail_count=0
@@ -26,8 +27,8 @@ cleanup() {
     delete from expenses where id in ('$EXPENSE1', '$EXPENSE_SAM_PAID');
     delete from expense_splits where expense_id = '$EXPENSE2';
     delete from expenses where id = '$EXPENSE2';
-    delete from group_members where group_id = '$TRIP_GROUP';
-    delete from groups where id = '$TRIP_GROUP';
+    delete from group_members where group_id in ('$TRIP_GROUP', '$EMPTY_GROUP');
+    delete from groups where id in ('$TRIP_GROUP', '$EMPTY_GROUP');
     delete from users where id in ('$ALEX','$SAM','$PRIYA');
     delete from auth.users where id in ('$ALEX','$SAM','$PRIYA');
   " > /dev/null 2>&1 || true
@@ -127,6 +128,19 @@ supabase db query --linked "
 check "A confirmed group settlement removes that debtor from the simplified list, leaving only Priya owing Alex 100" \
   "(select count(*) from get_group_debts('$TRIP_GROUP') where from_user = '$PRIYA' and to_user = '$ALEX' and amount = 100.00) = 1 and (select count(*) from get_group_debts('$TRIP_GROUP')) = 1" \
   "(select array_agg(row(from_user, to_user, amount)) from get_group_debts('$TRIP_GROUP'))"
+
+supabase db query --linked "
+  insert into groups (id, name, created_by) values ('$EMPTY_GROUP', 'Empty', '$ALEX');
+  insert into group_members (group_id, user_id) values ('$EMPTY_GROUP', '$ALEX');
+" > /dev/null
+
+# Regression test for the temp-table reuse bug found in review: calling
+# get_group_debts for two different groups in one statement/transaction
+# must not leak the first group's debts into the second's (unrelated,
+# expense-less) result.
+check "Querying a second, unrelated empty group in the same call returns no debts (no cross-group leakage from the prior TRIP_GROUP call)" \
+  "(select count(*) from get_group_debts('$TRIP_GROUP')) = 1 and (select count(*) from get_group_debts('$EMPTY_GROUP')) = 0" \
+  "(select count(*) from get_group_debts('$EMPTY_GROUP'))"
 
 echo "$pass_count passed, $fail_count failed"
 [[ "$fail_count" -eq 0 ]]
