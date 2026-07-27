@@ -60,6 +60,31 @@ class _FakeInsertResult extends Fake
   }
 }
 
+class _FakeUpdateSelectResult extends Fake
+    implements PostgrestTransformBuilder<PostgrestList> {
+  final PostgrestList rows;
+  _FakeUpdateSelectResult(this.rows);
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestList) onValue,
+      {Function? onError}) {
+    return Future.value(rows).then(onValue, onError: onError);
+  }
+}
+
+class _FakeUpdateResult extends Fake
+    implements PostgrestFilterBuilder<PostgrestMap> {
+  final PostgrestList rows;
+  _FakeUpdateResult(this.rows);
+
+  @override
+  PostgrestFilterBuilder<PostgrestMap> eq(String column, Object value) => this;
+
+  @override
+  PostgrestTransformBuilder<PostgrestList> select([String columns = '*']) =>
+      _FakeUpdateSelectResult(rows);
+}
+
 void main() {
   test('markPaid inserts a pending_confirmation settlement from the current user', () async {
     final client = MockSupabaseClient();
@@ -98,5 +123,36 @@ void main() {
     expect(captured['from_user'], 'u1');
     expect(captured['to_user'], 'u2');
     expect(captured['amount'], '500.00');
+  });
+
+  test('confirmSettlement succeeds when the update actually affects a row', () async {
+    final client = MockSupabaseClient();
+    final table = MockQueryBuilder();
+
+    when(() => client.from('settlements')).thenAnswer((_) => table);
+    when(() => table.update(any())).thenAnswer(
+      (_) => _FakeUpdateResult([
+        {'id': 's1', 'status': 'confirmed'}
+      ]),
+    );
+
+    final repo = SettlementRepository(client);
+    await repo.confirmSettlement('s1');
+    // No exception thrown means success.
+  });
+
+  test('confirmSettlement throws when RLS blocks the update (zero rows affected)', () async {
+    // Regression test: without checking the returned rows, an unauthorized
+    // confirm (e.g. the payer trying to self-confirm, blocked by
+    // settlements_update_payee_confirms) would silently succeed as a
+    // Future<void> even though nothing changed in the database.
+    final client = MockSupabaseClient();
+    final table = MockQueryBuilder();
+
+    when(() => client.from('settlements')).thenAnswer((_) => table);
+    when(() => table.update(any())).thenAnswer((_) => _FakeUpdateResult([]));
+
+    final repo = SettlementRepository(client);
+    expect(() => repo.confirmSettlement('s1'), throwsStateError);
   });
 }
