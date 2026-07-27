@@ -16,6 +16,8 @@
 - Settlements require two-sided confirmation (`pending_confirmation` → `confirmed`); only `confirmed` settlements net against balances.
 - Friend adding via phone search requires accept (`pending` → `accepted`); friendships via group invite link are auto-`accepted`.
 - Auth is Google/Apple sign-in only. Phone number is a separate, optional profile field used solely for friend search — never used for login.
+- **Backend target is the linked cloud Supabase project (ref `pacbkvuepitmmqxudscx`), not a local Docker stack.** Every task that applies a migration or runs pgTAP tests uses `supabase db push --linked` and `supabase test db --linked` (never `supabase start` / `supabase db reset` / `--local`). `supabase link --project-ref pacbkvuepitmmqxudscx` has already been run in the repo root — no task needs to repeat it.
+- **Every table gets Row Level Security enabled with policies scoping access to rows the requesting user actually participates in** (own profile, own friendships, groups/expenses/splits/settlements they're a party to). This is a real cloud project, not disposable local data — RLS is not optional. `get_friend_balance` and `get_group_debts` stay `security invoker` (the default) — the RLS policies above already make each function's underlying reads visible exactly when the caller is a legitimate participant — but each function still adds an explicit `auth.uid()` guard (raising an exception rather than silently returning zero/empty) so an unauthorized call fails loudly instead of returning misleadingly empty data.
 
 ---
 
@@ -281,18 +283,114 @@ create index idx_expense_splits_group on expenses (group_id);
 create index idx_expense_splits_user on expense_splits (user_id);
 create index idx_expense_splits_expense on expense_splits (expense_id);
 create index idx_settlements_pair on settlements (from_user, to_user);
+
+-- Row Level Security: every table is scoped to rows the requesting user
+-- (auth.uid()) actually participates in. This is a live cloud project, so
+-- the anon/authenticated client key must never see or touch rows outside
+-- the caller's own data.
+
+alter table users enable row level security;
+alter table groups enable row level security;
+alter table group_members enable row level security;
+alter table friendships enable row level security;
+alter table expenses enable row level security;
+alter table expense_splits enable row level security;
+alter table settlements enable row level security;
+
+-- users: any authenticated user can look up any other user (required for
+-- phone-number friend search and displaying names on shared expenses/groups);
+-- only the row owner can modify their own profile.
+create policy users_select_authenticated on users
+  for select to authenticated using (true);
+create policy users_insert_self on users
+  for insert to authenticated with check (id = auth.uid());
+create policy users_update_self on users
+  for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+
+-- groups: visible/updatable only to members of that group; anyone
+-- authenticated can create a group naming themselves as creator.
+create policy groups_select_member on groups
+  for select to authenticated using (
+    exists (select 1 from group_members gm where gm.group_id = id and gm.user_id = auth.uid())
+  );
+create policy groups_insert_self on groups
+  for insert to authenticated with check (created_by = auth.uid());
+create policy groups_update_member on groups
+  for update to authenticated using (
+    exists (select 1 from group_members gm where gm.group_id = id and gm.user_id = auth.uid())
+  );
+
+-- group_members: a member can see the roster of any group they belong to;
+-- a user may only insert their own membership row (creating a group, or
+-- joining via invite code).
+create policy group_members_select_fellow_member on group_members
+  for select to authenticated using (
+    exists (select 1 from group_members gm2 where gm2.group_id = group_members.group_id and gm2.user_id = auth.uid())
+  );
+create policy group_members_insert_self on group_members
+  for insert to authenticated with check (user_id = auth.uid());
+
+-- friendships: only the two parties to a friendship can see, create, or
+-- update (accept) it.
+create policy friendships_select_party on friendships
+  for select to authenticated using (auth.uid() = user_id_a or auth.uid() = user_id_b);
+create policy friendships_insert_party on friendships
+  for insert to authenticated with check (auth.uid() = user_id_a or auth.uid() = user_id_b);
+create policy friendships_update_party on friendships
+  for update to authenticated using (auth.uid() = user_id_a or auth.uid() = user_id_b);
+
+-- expenses: visible/editable to whoever paid, created, is split into it, or
+-- shares its group.
+create policy expenses_select_participant on expenses
+  for select to authenticated using (
+    paid_by = auth.uid()
+    or created_by = auth.uid()
+    or exists (select 1 from expense_splits es where es.expense_id = id and es.user_id = auth.uid())
+    or (group_id is not null and exists (
+      select 1 from group_members gm where gm.group_id = expenses.group_id and gm.user_id = auth.uid()
+    ))
+  );
+create policy expenses_insert_creator on expenses
+  for insert to authenticated with check (created_by = auth.uid());
+create policy expenses_update_participant on expenses
+  for update to authenticated using (
+    paid_by = auth.uid()
+    or created_by = auth.uid()
+    or exists (select 1 from expense_splits es where es.expense_id = id and es.user_id = auth.uid())
+  );
+
+-- expense_splits: visible to the split's own user or the expense's payer;
+-- insertable by whoever paid the parent expense (the creator writing splits
+-- at expense-creation time).
+create policy expense_splits_select_participant on expense_splits
+  for select to authenticated using (
+    user_id = auth.uid()
+    or exists (select 1 from expenses e where e.id = expense_id and e.paid_by = auth.uid())
+  );
+create policy expense_splits_insert_payer on expense_splits
+  for insert to authenticated with check (
+    exists (select 1 from expenses e where e.id = expense_id and e.paid_by = auth.uid())
+  );
+
+-- settlements: visible/insertable/updatable only to the two parties.
+create policy settlements_select_party on settlements
+  for select to authenticated using (auth.uid() = from_user or auth.uid() = to_user);
+create policy settlements_insert_payer on settlements
+  for insert to authenticated with check (auth.uid() = from_user);
+create policy settlements_update_payee_confirms on settlements
+  for update to authenticated using (auth.uid() = to_user);
 ```
 
-- [ ] **Step 2: Apply the migration to the local Supabase dev stack**
+- [ ] **Step 2: Push the migration to the linked cloud project**
 
-Run: `supabase start` then `supabase db reset`
-Expected: migration applies with no errors; `supabase db diff` shows no drift.
+Run: `supabase db push --linked`
+Expected: migration applies with no errors. Confirm with `supabase db diff --linked` showing no drift.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add supabase/migrations/0001_init_schema.sql
-git commit -m "feat: add core schema migration (users, groups, expenses, settlements)"
+git commit -m "feat: add core schema migration with RLS policies (users, groups, expenses, settlements)"
 ```
 
 ---
@@ -355,7 +453,7 @@ rollback;
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `supabase test db`
+Run: `supabase test db --linked`
 Expected: FAIL — `function get_friend_balance(uuid, uuid) does not exist`.
 
 - [ ] **Step 3: Implement the RPC**
@@ -365,10 +463,17 @@ Expected: FAIL — `function get_friend_balance(uuid, uuid) does not exist`.
 
 create or replace function get_friend_balance(user_a uuid, user_b uuid)
 returns numeric
-language sql
+language plpgsql
 stable
 as $$
-  with paid_by_a as (
+begin
+  -- auth.uid() is null for the service/test context (pgTAP, migrations);
+  -- for any real authenticated call, only a party to the pair may query it.
+  if auth.uid() is not null and auth.uid() not in (user_a, user_b) then
+    raise exception 'not authorized to view this balance';
+  end if;
+
+  return (with paid_by_a as (
     select coalesce(sum(es.share_amount), 0) as amt
     from expense_splits es
     join expenses e on e.id = es.expense_id
@@ -397,13 +502,14 @@ as $$
   select (select amt from paid_by_a)
        - (select amt from paid_by_b)
        - (select amt from settled_a_to_b)
-       + (select amt from settled_b_to_a);
+       + (select amt from settled_b_to_a));
+end;
 $$;
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `supabase test db`
+Run: `supabase test db --linked`
 Expected: PASS (2/2)
 
 - [ ] **Step 5: Commit**
@@ -466,7 +572,7 @@ select is(
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `supabase test db`
+Run: `supabase test db --linked`
 Expected: FAIL — `function get_group_debts(uuid) does not exist`.
 
 - [ ] **Step 3: Implement the RPC**
@@ -491,6 +597,15 @@ declare
   di int := 1;
   settle_amount numeric;
 begin
+  -- auth.uid() is null for the service/test context (pgTAP, migrations);
+  -- for any real authenticated call, only an actual member of the group
+  -- may query its debts.
+  if auth.uid() is not null and not exists (
+    select 1 from group_members gm where gm.group_id = target_group_id and gm.user_id = auth.uid()
+  ) then
+    raise exception 'not authorized to view this group''s debts';
+  end if;
+
   -- Net balance per member: positive = owed money, negative = owes money.
   create temporary table _member_net on commit drop as
   select gm.user_id,
@@ -554,7 +669,7 @@ $$;
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `supabase test db`
+Run: `supabase test db --linked`
 Expected: PASS (3/3)
 
 - [ ] **Step 5: Commit**
