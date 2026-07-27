@@ -547,7 +547,7 @@ $$;
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `./supabase/tests/database/run_balance_rpc_tests.sh`
-Expected: `2 passed, 0 failed`, exit code 0.
+Expected: `2 passed, 0 failed`, exit code 0. (Note: task review later added two more `get_friend_balance` cases covering the settlement-direction and `paid_by_b` gaps — by the time Task 3 is actually complete, this is `4 passed, 0 failed`.)
 
 - [ ] **Step 5: Commit**
 
@@ -611,12 +611,21 @@ supabase db query --linked "
 check "Two simplified transactions settle a three-person group" \
   "(select count(*)::int from get_group_debts('$TRIP_GROUP')) = 2" \
   "(select count(*)::int from get_group_debts('$TRIP_GROUP'))"
+
+supabase db query --linked "
+  insert into settlements (group_id, from_user, to_user, amount, status, confirmed_at)
+  values ('$TRIP_GROUP', '$SAM', '$ALEX', 100.00, 'confirmed', now());
+" > /dev/null
+
+check "A confirmed group settlement removes that debtor from the simplified list, leaving only Priya owing Alex 100" \
+  "(select count(*) from get_group_debts('$TRIP_GROUP') where from_user = '$PRIYA' and to_user = '$ALEX' and amount = 100.00) = 1 and (select count(*) from get_group_debts('$TRIP_GROUP')) = 1" \
+  "(select array_agg(row(from_user, to_user, amount)) from get_group_debts('$TRIP_GROUP'))"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `./supabase/tests/database/run_balance_rpc_tests.sh`
-Expected: the third check fails (`not ok`) because `get_group_debts` doesn't exist yet — `jq` prints `null` for `actual`, `1 failed` in the summary, non-zero exit.
+Expected: the two new `get_group_debts` checks fail (`not ok`) because the function doesn't exist yet — `jq` prints `null` for `actual`, `2 failed` in the summary (on top of the 4 pre-existing `get_friend_balance` passes), non-zero exit.
 
 - [ ] **Step 3: Implement the RPC**
 
@@ -668,12 +677,15 @@ begin
   where gm.group_id = target_group_id
   group by gm.user_id;
 
-  -- Subtract confirmed settlements within this group from the net balances.
+  -- Apply confirmed settlements within this group to the net balances. A
+  -- settlement FROM this member means they paid down debt, moving their net
+  -- toward positive (+); a settlement TO this member means they received a
+  -- payment, reducing what they're owed, moving their net toward zero (-).
   update _member_net m
-  set net = m.net - coalesce((
+  set net = m.net + coalesce((
     select sum(s.amount) from settlements s
     where s.group_id = target_group_id and s.status = 'confirmed' and s.from_user = m.user_id
-  ), 0) + coalesce((
+  ), 0) - coalesce((
     select sum(s.amount) from settlements s
     where s.group_id = target_group_id and s.status = 'confirmed' and s.to_user = m.user_id
   ), 0);
@@ -713,7 +725,7 @@ $$;
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `./supabase/tests/database/run_balance_rpc_tests.sh`
-Expected: `3 passed, 0 failed`, exit code 0.
+Expected: `6 passed, 0 failed`, exit code 0 (4 `get_friend_balance` checks from Task 3 plus the 2 `get_group_debts` checks added here).
 
 - [ ] **Step 5: Commit**
 
