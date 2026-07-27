@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart';
+import 'package:meowes_app/features/friends/friend_detail_screen.dart';
 import 'package:meowes_app/features/groups/create_group_screen.dart';
+import 'package:meowes_app/features/groups/group_detail_screen.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/friendship.dart';
 import 'package:meowes_app/models/group.dart';
@@ -44,14 +47,14 @@ class HomeScreen extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 28),
-            const _SectionHeader(title: 'Groups'),
+            const SectionHeader(title: 'Groups'),
             const SizedBox(height: 12),
             StreamBuilder<List<Group>>(
               stream: groupRepo.watchMyGroups(),
               builder: (context, snapshot) {
                 final groups = snapshot.data ?? [];
                 if (groups.isEmpty) {
-                  return const _EmptyState(
+                  return const EmptyStateBox(
                     icon: Icons.groups_2_outlined,
                     message: 'No groups yet — create one to split with a crew.',
                   );
@@ -200,12 +203,12 @@ class _FriendsAndSummary extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _BalanceSummaryCard(total: total, loading: loading),
+            BalanceSummaryCard(balance: total, loading: loading),
             const SizedBox(height: 24),
-            const _SectionHeader(title: 'Friends'),
+            const SectionHeader(title: 'Friends'),
             const SizedBox(height: 12),
             if (friendIds.isEmpty)
-              const _EmptyState(
+              const EmptyStateBox(
                 icon: Icons.pets,
                 message: 'No friends yet — add one to start splitting expenses.',
               )
@@ -214,9 +217,9 @@ class _FriendsAndSummary extends StatelessWidget {
                 children: [
                   for (final id in friendIds) ...[
                     _FriendTile(
+                      friendUserId: id,
                       name: data.profiles[id]?.name ?? '...',
                       balance: data.balances[id] ?? 0,
-                      seed: id,
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -229,112 +232,24 @@ class _FriendsAndSummary extends StatelessWidget {
   }
 }
 
-class _BalanceSummaryCard extends StatelessWidget {
-  final double total;
-  final bool loading;
-  const _BalanceSummaryCard({required this.total, required this.loading});
-
-  @override
-  Widget build(BuildContext context) {
-    final isOwed = total > 0.005;
-    final isOwing = total < -0.005;
-    final bg = isOwed ? AppColors.owedBg : (isOwing ? AppColors.owingBg : AppColors.settledBg);
-    final fg = isOwed ? AppColors.owedText : (isOwing ? AppColors.owingText : AppColors.settledText);
-    final label = isOwed ? 'You are owed' : (isOwing ? 'You owe' : 'All settled up');
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(22)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 15)),
-          const SizedBox(height: 6),
-          if (loading)
-            SizedBox(
-              height: 30,
-              width: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: fg),
-            )
-          else if (!isOwed && !isOwing)
-            const Text('🐾', style: TextStyle(fontSize: 26))
-          else
-            Text(
-              '₹${total.abs().toStringAsFixed(2)}',
-              style: TextStyle(color: fg, fontSize: 30, fontWeight: FontWeight.w800),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) => Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark),
-      );
-}
-
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  const _EmptyState({required this.icon, required this.message});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
-        child: Column(
-          children: [
-            Icon(icon, color: AppColors.textMuted, size: 28),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textMuted)),
-          ],
-        ),
-      );
-}
-
 class _FriendTile extends StatelessWidget {
+  final String friendUserId;
   final String name;
   final double balance;
-  final String seed;
-  const _FriendTile({required this.name, required this.balance, required this.seed});
+  const _FriendTile({required this.friendUserId, required this.name, required this.balance});
 
   @override
   Widget build(BuildContext context) {
-    final isOwed = balance > 0.005;
-    final isOwing = balance < -0.005;
-    final amountColor = isOwed ? AppColors.owedText : (isOwing ? AppColors.owingText : AppColors.settledText);
-    final sign = isOwed ? '+' : (isOwing ? '-' : '');
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+    return AppCard(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => FriendDetailScreen(friendUserId: friendUserId)),
+      ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: AppColors.avatarFor(seed),
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : '?',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-            ),
-          ),
+          AppAvatar(seed: friendUserId, label: name),
           const SizedBox(width: 12),
           Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
-          if (!isOwed && !isOwing)
-            const Text('Settled', style: TextStyle(color: AppColors.settledText, fontWeight: FontWeight.w600))
-          else
-            Text(
-              '$sign₹${balance.abs().toStringAsFixed(2)}',
-              style: TextStyle(color: amountColor, fontWeight: FontWeight.w700),
-            ),
+          BalanceAmount(balance: balance),
         ],
       ),
     );
@@ -359,30 +274,16 @@ class _GroupTile extends StatelessWidget {
           if (d['to_user'] == me) net += amount;
           if (d['from_user'] == me) net -= amount;
         }
-        final isOwed = net > 0.005;
-        final isOwing = net < -0.005;
-        final amountColor = isOwed ? AppColors.owedText : (isOwing ? AppColors.owingText : AppColors.settledText);
-
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        return AppCard(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => GroupDetailScreen(groupId: group.id)),
+          ),
           child: Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: AppColors.avatarFor(group.id), shape: BoxShape.circle),
-                child: const Icon(Icons.groups, color: Colors.white, size: 22),
-              ),
+              AppAvatar(seed: group.id, icon: Icons.groups),
               const SizedBox(width: 12),
               Expanded(child: Text(group.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
-              if (!isOwed && !isOwing)
-                const Text('Settled', style: TextStyle(color: AppColors.settledText, fontWeight: FontWeight.w600))
-              else
-                Text(
-                  '${isOwed ? '+' : '-'}₹${net.abs().toStringAsFixed(2)}',
-                  style: TextStyle(color: amountColor, fontWeight: FontWeight.w700),
-                ),
+              BalanceAmount(balance: net),
             ],
           ),
         );
