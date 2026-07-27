@@ -18,19 +18,34 @@ recorded here so they're visible in the repo rather than only in session state.
   `ExpenseRepository.createExpense`, never `editExpense`. `editExpense` and the
   re-split logic it implies were never actually wired up to any screen.
 
+## Resolved
+
+- ~~No root routing~~ — `main.dart` now routes through `RootScreen`
+  (`lib/features/root/root_screen.dart`): signed out → `SignInScreen`, signed
+  in with no `users` row yet → `ProfileSetupScreen`, otherwise → `HomeScreen`.
+  Verified end-to-end on an Android emulator. `HomeScreen`'s friend/group
+  tiles still aren't tappable into their detail screens — that part of the
+  original gap remains, see below.
+- ~~No way to test without native Google/Apple OAuth config~~ — `SignInScreen`
+  has a `kDebugMode`-gated "Sign in as Test User 1/2" path
+  (`AuthRepository.signInWithTestAccount`) using two seeded Supabase
+  email/password accounts (`testuser1@meowes.dev` / `testuser2@meowes.dev`,
+  password `MeowesDevTest123!`), so the app can be exercised without waiting
+  on real OAuth setup. The underlying native-config gap (see below) is
+  unchanged for the real Google/Apple buttons.
+
 ## Not yet tracked as separate tasks
 
-- **No root routing** — `main.dart` still shows the Task 1 placeholder
-  (`Scaffold(body: Center(child: Text('Meowes')))`). Nothing wires
-  `SignInScreen → ProfileSetupScreen → HomeScreen` together, and `HomeScreen`'s
-  friend/group tiles aren't tappable into their detail screens. The app has no
-  real navigable flow yet.
+- **`HomeScreen`'s friend/group tiles aren't tappable** — `FriendDetailScreen`
+  and `GroupDetailScreen` exist (Task 13) but nothing on `HomeScreen`
+  navigates to them yet.
 - **Google/Apple sign-in has no native configuration** — the Dart-side calls
   to `google_sign_in`/`sign_in_with_apple` are wired up, but there's no
   `GoogleService-Info.plist`/`google-services.json`, no URL schemes in
   `Info.plist`/`AndroidManifest.xml`, and no OAuth client IDs registered in
   Google Cloud Console or Supabase's Auth provider settings. Tapping either
-  sign-in button will throw.
+  real sign-in button will throw. The dev test-account bypass above sidesteps
+  this for testing but doesn't fix it.
 - **`public_profiles` view is unused** — created to expose non-sensitive
   profile fields (name, avatar) for cross-user display after `users` was
   locked to own-row-only SELECT, but no screen reads it yet; `HomeScreen`
