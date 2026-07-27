@@ -21,14 +21,24 @@ class GroupRepository {
   }
 
   Future<Group> joinByInviteCode(String code) async {
-    final me = _client.auth.currentUser!.id;
-    final row = await _client.from('groups').select().eq('invite_code', code).single();
-    final group = Group.fromJson(row);
-    await _client.from('group_members').upsert({
-      'group_id': group.id,
-      'user_id': me,
-    });
-    return group;
+    // Calls the join_group_by_code RPC rather than selecting the groups
+    // table directly: RLS locks groups to member-only SELECT, so a
+    // non-member could never see the row to join it in the first place.
+    // The RPC is SECURITY DEFINER and inserts the membership itself.
+    try {
+      final rows = await _client.rpc('join_group_by_code', params: {
+        'invite_code_param': code,
+      });
+      final results = rows is List<dynamic> ? rows : const <dynamic>[];
+      if (results.isEmpty) {
+        throw StateError('Invalid invite code');
+      }
+      return Group.fromJson(results.first as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      throw StateError(e.message.contains('invalid invite code')
+          ? 'Invalid invite code'
+          : e.message);
+    }
   }
 
   Stream<List<Group>> watchMyGroups() {

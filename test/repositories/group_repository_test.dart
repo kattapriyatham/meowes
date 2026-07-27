@@ -60,6 +60,20 @@ class _FakeInsertResult extends Fake
   }
 }
 
+// client.rpc(...) also returns a PostgrestFilterBuilder (Future-implementing),
+// same reasoning as above — a bare Fake with a working then() is enough
+// since neither repository method chains .select()/.single() off an rpc() call.
+class _FakeRpcResult extends Fake implements PostgrestFilterBuilder<dynamic> {
+  final dynamic value;
+  _FakeRpcResult(this.value);
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(dynamic) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
+
 void main() {
   test('createGroup inserts a group and adds the creator as a member', () async {
     final client = MockSupabaseClient();
@@ -96,5 +110,66 @@ void main() {
         as Map<String, dynamic>;
     expect(captured['group_id'], 'g1');
     expect(captured['user_id'], 'u1');
+  });
+
+  test('joinByInviteCode calls the join_group_by_code RPC, not a direct table select', () async {
+    // Regression test: groups RLS is member-only SELECT, so a non-member
+    // can never see the row via a plain .from('groups').select() — joining
+    // must go through the SECURITY DEFINER RPC instead.
+    final client = MockSupabaseClient();
+    final auth = MockGoTrueClient();
+
+    when(() => client.auth).thenReturn(auth);
+    when(() => auth.currentUser).thenReturn(
+      User(
+        id: 'u2',
+        appMetadata: const {},
+        userMetadata: const {},
+        aud: 'authenticated',
+        createdAt: '2026-07-27T00:00:00Z',
+      ),
+    );
+    when(() => client.rpc('join_group_by_code', params: any(named: 'params')))
+        .thenAnswer((_) => _FakeRpcResult([
+              {
+                'id': 'g1',
+                'name': 'Trip',
+                'created_by': 'u1',
+                'invite_code': 'abc123',
+              }
+            ]));
+
+    final repo = GroupRepository(client);
+    final group = await repo.joinByInviteCode('abc123');
+
+    expect(group.id, 'g1');
+    expect(group.inviteCode, 'abc123');
+    verifyNever(() => client.from('groups'));
+    final captured = verify(() =>
+            client.rpc('join_group_by_code', params: captureAny(named: 'params')))
+        .captured
+        .single as Map<String, dynamic>;
+    expect(captured['invite_code_param'], 'abc123');
+  });
+
+  test('joinByInviteCode throws a clear error for an invalid invite code', () async {
+    final client = MockSupabaseClient();
+    final auth = MockGoTrueClient();
+
+    when(() => client.auth).thenReturn(auth);
+    when(() => auth.currentUser).thenReturn(
+      User(
+        id: 'u2',
+        appMetadata: const {},
+        userMetadata: const {},
+        aud: 'authenticated',
+        createdAt: '2026-07-27T00:00:00Z',
+      ),
+    );
+    when(() => client.rpc('join_group_by_code', params: any(named: 'params')))
+        .thenAnswer((_) => _FakeRpcResult(<dynamic>[]));
+
+    final repo = GroupRepository(client);
+    expect(() => repo.joinByInviteCode('badcode'), throwsStateError);
   });
 }
