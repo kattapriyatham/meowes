@@ -12,7 +12,7 @@ class FriendRepository {
     // RLS fix), so phone lookup goes through this SECURITY DEFINER
     // function instead, which also never returns phone_number itself back.
     final rows = await _client.rpc('find_user_by_phone', params: {'p_phone': phone});
-    final results = rows as List<dynamic>;
+    final results = rows is List<dynamic> ? rows : const <dynamic>[];
     if (results.isEmpty) return null;
     return AppUser.fromJson(results.first as Map<String, dynamic>);
   }
