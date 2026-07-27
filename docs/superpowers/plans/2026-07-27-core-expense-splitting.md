@@ -1255,6 +1255,8 @@ git commit -m "feat: add domain models for users, expenses, splits, settlements"
 
 ```dart
 // test/repositories/auth_repository_test.dart
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1262,7 +1264,21 @@ import 'package:meowes_app/repositories/auth_repository.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 class MockGoTrueClient extends Mock implements GoTrueClient {}
-class MockPostgrestQueryBuilder extends Mock implements SupabaseQueryBuilder {}
+class MockSupabaseQueryBuilder extends Mock implements SupabaseQueryBuilder {}
+
+// PostgrestFilterBuilder implements Future, and mocktail's Mock cannot
+// reliably stub then() (its onError named-argument shape doesn't match
+// what Dart's await protocol actually passes). A hand-written Fake with a
+// real then() implementation sidesteps that — Fake's noSuchMethod covers
+// every other interface member this test never calls.
+class _FakeUpsertBuilder extends Fake
+    implements PostgrestFilterBuilder<PostgrestMap> {
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(<String, dynamic>{}).then(onValue, onError: onError);
+  }
+}
 
 void main() {
   late MockSupabaseClient client;
@@ -1275,8 +1291,8 @@ void main() {
   });
 
   test('upsertProfile calls upsert on the users table with given fields', () async {
-    final table = MockPostgrestQueryBuilder();
-    when(() => client.from('users')).thenReturn(table);
+    final table = MockSupabaseQueryBuilder();
+    when(() => client.from('users')).thenAnswer((_) => table);
     when(() => auth.currentUser).thenReturn(
       User(
         id: 'u1',
@@ -1286,7 +1302,7 @@ void main() {
         createdAt: '2026-07-27T00:00:00Z',
       ),
     );
-    when(() => table.upsert(any())).thenAnswer((_) async => <dynamic, dynamic>{});
+    when(() => table.upsert(any())).thenAnswer((_) => _FakeUpsertBuilder());
 
     final repo = AuthRepository(client);
     await repo.upsertProfile(name: 'Alex', phoneNumber: '+911234567890');
@@ -1502,6 +1518,8 @@ git commit -m "feat: add Google/Apple sign-in and profile setup"
 
 ```dart
 // test/repositories/friend_repository_test.dart
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1510,7 +1528,30 @@ import 'package:meowes_app/repositories/friend_repository.dart';
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 class MockGoTrueClient extends Mock implements GoTrueClient {}
 class MockQueryBuilder extends Mock implements SupabaseQueryBuilder {}
-class MockFilterBuilder extends Mock implements PostgrestFilterBuilder<dynamic> {}
+
+// PostgrestFilterBuilder implements Future, and mocktail's Mock cannot
+// reliably stub then() (its onError named-argument shape doesn't match
+// what Dart's await protocol actually passes). A hand-written Fake with a
+// real then() implementation sidesteps that — Fake's noSuchMethod covers
+// every other interface member this test never calls. select()/single()
+// both return `this` so insert(...).select().single() chains also work.
+class _FakeQueryResult extends Fake
+    implements PostgrestFilterBuilder<PostgrestMap> {
+  final PostgrestMap value;
+  _FakeQueryResult([this.value = const {}]);
+
+  @override
+  PostgrestFilterBuilder<PostgrestMap> select([String columns = '*']) => this;
+
+  @override
+  PostgrestTransformBuilder<PostgrestMap> single() => this;
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
 
 void main() {
   test('sendFriendRequest inserts a pending friendship with ordered user ids', () async {
@@ -1528,8 +1569,8 @@ void main() {
         createdAt: '2026-07-27T00:00:00Z',
       ),
     );
-    when(() => client.from('friendships')).thenReturn(table);
-    when(() => table.insert(any())).thenAnswer((_) async => <dynamic, dynamic>{});
+    when(() => client.from('friendships')).thenAnswer((_) => table);
+    when(() => table.insert(any())).thenAnswer((_) => _FakeQueryResult());
 
     final repo = FriendRepository(client);
     await repo.sendFriendRequest('aaaaaaaa-0000-0000-0000-000000000000');
@@ -1713,6 +1754,8 @@ git commit -m "feat: add friend search, request/accept, and Add Friend screen"
 
 ```dart
 // test/repositories/group_repository_test.dart
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1721,7 +1764,30 @@ import 'package:meowes_app/repositories/group_repository.dart';
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 class MockGoTrueClient extends Mock implements GoTrueClient {}
 class MockQueryBuilder extends Mock implements SupabaseQueryBuilder {}
-class MockFilterBuilder extends Mock implements PostgrestFilterBuilder<dynamic> {}
+
+// PostgrestFilterBuilder implements Future, and mocktail's Mock cannot
+// reliably stub then() (its onError named-argument shape doesn't match
+// what Dart's await protocol actually passes). A hand-written Fake with a
+// real then() implementation sidesteps that — Fake's noSuchMethod covers
+// every other interface member this test never calls. select()/single()
+// both return `this` so insert(...).select().single() chains also work.
+class _FakeQueryResult extends Fake
+    implements PostgrestFilterBuilder<PostgrestMap> {
+  final PostgrestMap value;
+  _FakeQueryResult([this.value = const {}]);
+
+  @override
+  PostgrestFilterBuilder<PostgrestMap> select([String columns = '*']) => this;
+
+  @override
+  PostgrestTransformBuilder<PostgrestMap> single() => this;
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
 
 void main() {
   test('createGroup inserts a group and adds the creator as a member', () async {
@@ -1729,7 +1795,6 @@ void main() {
     final auth = MockGoTrueClient();
     final groupsTable = MockQueryBuilder();
     final membersTable = MockQueryBuilder();
-    final selectBuilder = MockFilterBuilder();
 
     when(() => client.auth).thenReturn(auth);
     when(() => auth.currentUser).thenReturn(
@@ -1741,17 +1806,15 @@ void main() {
         createdAt: '2026-07-27T00:00:00Z',
       ),
     );
-    when(() => client.from('groups')).thenReturn(groupsTable);
-    when(() => client.from('group_members')).thenReturn(membersTable);
-    when(() => groupsTable.insert(any())).thenReturn(selectBuilder);
-    when(() => selectBuilder.select()).thenReturn(selectBuilder);
-    when(() => selectBuilder.single()).thenAnswer((_) async => {
+    when(() => client.from('groups')).thenAnswer((_) => groupsTable);
+    when(() => client.from('group_members')).thenAnswer((_) => membersTable);
+    when(() => groupsTable.insert(any())).thenAnswer((_) => _FakeQueryResult({
           'id': 'g1',
           'name': 'Trip',
           'created_by': 'u1',
           'invite_code': 'abc123',
-        });
-    when(() => membersTable.insert(any())).thenAnswer((_) async => <dynamic, dynamic>{});
+        }));
+    when(() => membersTable.insert(any())).thenAnswer((_) => _FakeQueryResult());
 
     final repo = GroupRepository(client);
     final group = await repo.createGroup('Trip');
@@ -1904,6 +1967,8 @@ git commit -m "feat: add group creation, invite-code join, and Create Group scre
 
 ```dart
 // test/repositories/expense_repository_test.dart
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1913,7 +1978,30 @@ import 'package:meowes_app/splitting/split_calculator.dart';
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 class MockGoTrueClient extends Mock implements GoTrueClient {}
 class MockQueryBuilder extends Mock implements SupabaseQueryBuilder {}
-class MockFilterBuilder extends Mock implements PostgrestFilterBuilder<dynamic> {}
+
+// PostgrestFilterBuilder implements Future, and mocktail's Mock cannot
+// reliably stub then() (its onError named-argument shape doesn't match
+// what Dart's await protocol actually passes). A hand-written Fake with a
+// real then() implementation sidesteps that — Fake's noSuchMethod covers
+// every other interface member this test never calls. select()/single()
+// both return `this` so insert(...).select().single() chains also work.
+class _FakeQueryResult extends Fake
+    implements PostgrestFilterBuilder<PostgrestMap> {
+  final PostgrestMap value;
+  _FakeQueryResult([this.value = const {}]);
+
+  @override
+  PostgrestFilterBuilder<PostgrestMap> select([String columns = '*']) => this;
+
+  @override
+  PostgrestTransformBuilder<PostgrestMap> single() => this;
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
 
 void main() {
   test('createExpense inserts expense then inserts splits from SplitCalculator', () async {
@@ -1921,7 +2009,6 @@ void main() {
     final auth = MockGoTrueClient();
     final expensesTable = MockQueryBuilder();
     final splitsTable = MockQueryBuilder();
-    final selectBuilder = MockFilterBuilder();
 
     when(() => client.auth).thenReturn(auth);
     when(() => auth.currentUser).thenReturn(
@@ -1933,11 +2020,9 @@ void main() {
         createdAt: '2026-07-27T00:00:00Z',
       ),
     );
-    when(() => client.from('expenses')).thenReturn(expensesTable);
-    when(() => client.from('expense_splits')).thenReturn(splitsTable);
-    when(() => expensesTable.insert(any())).thenReturn(selectBuilder);
-    when(() => selectBuilder.select()).thenReturn(selectBuilder);
-    when(() => selectBuilder.single()).thenAnswer((_) async => {
+    when(() => client.from('expenses')).thenAnswer((_) => expensesTable);
+    when(() => client.from('expense_splits')).thenAnswer((_) => splitsTable);
+    when(() => expensesTable.insert(any())).thenAnswer((_) => _FakeQueryResult({
           'id': 'e1',
           'group_id': null,
           'paid_by': 'u1',
@@ -1950,8 +2035,8 @@ void main() {
           'edited_at': null,
           'edited_by': null,
           'deleted_at': null,
-        });
-    when(() => splitsTable.insert(any())).thenAnswer((_) async => <dynamic, dynamic>{});
+        }));
+    when(() => splitsTable.insert(any())).thenAnswer((_) => _FakeQueryResult());
 
     final repo = ExpenseRepository(client);
     final expense = await repo.createExpense(
@@ -2174,6 +2259,8 @@ git commit -m "feat: add expense creation/edit/delete and Add Expense screen"
 
 ```dart
 // test/repositories/settlement_repository_test.dart
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -2182,14 +2269,36 @@ import 'package:meowes_app/repositories/settlement_repository.dart';
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 class MockGoTrueClient extends Mock implements GoTrueClient {}
 class MockQueryBuilder extends Mock implements SupabaseQueryBuilder {}
-class MockFilterBuilder extends Mock implements PostgrestFilterBuilder<dynamic> {}
+
+// PostgrestFilterBuilder implements Future, and mocktail's Mock cannot
+// reliably stub then() (its onError named-argument shape doesn't match
+// what Dart's await protocol actually passes). A hand-written Fake with a
+// real then() implementation sidesteps that — Fake's noSuchMethod covers
+// every other interface member this test never calls. select()/single()
+// both return `this` so insert(...).select().single() chains also work.
+class _FakeQueryResult extends Fake
+    implements PostgrestFilterBuilder<PostgrestMap> {
+  final PostgrestMap value;
+  _FakeQueryResult([this.value = const {}]);
+
+  @override
+  PostgrestFilterBuilder<PostgrestMap> select([String columns = '*']) => this;
+
+  @override
+  PostgrestTransformBuilder<PostgrestMap> single() => this;
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
 
 void main() {
   test('markPaid inserts a pending_confirmation settlement from the current user', () async {
     final client = MockSupabaseClient();
     final auth = MockGoTrueClient();
     final table = MockQueryBuilder();
-    final selectBuilder = MockFilterBuilder();
 
     when(() => client.auth).thenReturn(auth);
     when(() => auth.currentUser).thenReturn(
@@ -2201,10 +2310,8 @@ void main() {
         createdAt: '2026-07-27T00:00:00Z',
       ),
     );
-    when(() => client.from('settlements')).thenReturn(table);
-    when(() => table.insert(any())).thenReturn(selectBuilder);
-    when(() => selectBuilder.select()).thenReturn(selectBuilder);
-    when(() => selectBuilder.single()).thenAnswer((_) async => {
+    when(() => client.from('settlements')).thenAnswer((_) => table);
+    when(() => table.insert(any())).thenAnswer((_) => _FakeQueryResult({
           'id': 's1',
           'group_id': null,
           'from_user': 'u1',
@@ -2213,7 +2320,7 @@ void main() {
           'status': 'pending_confirmation',
           'created_at': '2026-07-27T10:00:00Z',
           'confirmed_at': null,
-        });
+        }));
 
     final repo = SettlementRepository(client);
     final settlement =
