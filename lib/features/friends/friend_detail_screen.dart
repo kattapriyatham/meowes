@@ -20,20 +20,27 @@ class FriendDetailScreen extends ConsumerWidget {
         }),
         builder: (context, snapshot) {
           final balance = (snapshot.data as num?)?.toDouble() ?? 0;
+          // get_friend_balance(me, friend) is positive when the friend owes
+          // me, negative when I owe the friend. Settling here means "I paid
+          // this" (markPaid always records from_user = me), so the button
+          // only makes sense when I'm the one who owes — offering it when
+          // the friend owes me would record a payment in the wrong direction.
+          final iOwe = balance < -0.005;
           return Column(
             children: [
               Text('₹${balance.toStringAsFixed(2)}'),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SettleUpScreen(
-                      toUser: friendUserId,
-                      amountMinorUnits: (balance.abs() * 100).round(),
+              if (iOwe)
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SettleUpScreen(
+                        toUser: friendUserId,
+                        amountMinorUnits: (balance.abs() * 100).round(),
+                      ),
                     ),
                   ),
+                  child: const Text('Settle up'),
                 ),
-                child: const Text('Settle up'),
-              ),
             ],
           );
         },
