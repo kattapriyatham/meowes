@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/features/auth/sign_in_screen.dart';
+import 'package:meowes_app/features/home/home_screen.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -41,7 +42,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       ? null
                       : _phoneController.text.trim(),
                 );
-                // Navigation to HomeScreen wired in Task 10.
+                if (context.mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                  );
+                }
               },
               child: const Text('Continue'),
             ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/supabase_client.dart';
@@ -41,6 +42,38 @@ class SignInScreen extends ConsumerWidget {
               },
               child: const Text('Continue with Apple'),
             ),
+            if (kDebugMode) ...[
+              const SizedBox(height: 32),
+              const Text('DEV ONLY', style: TextStyle(color: Colors.red)),
+              ElevatedButton(
+                onPressed: () async {
+                  await authRepo.signInWithTestAccount(
+                    'testuser1@meowes.dev',
+                    'MeowesDevTest123!',
+                  );
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+                    );
+                  }
+                },
+                child: const Text('Sign in as Test User 1'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  await authRepo.signInWithTestAccount(
+                    'testuser2@meowes.dev',
+                    'MeowesDevTest123!',
+                  );
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+                    );
+                  }
+                },
+                child: const Text('Sign in as Test User 2'),
+              ),
+            ],
           ],
         ),
       ),

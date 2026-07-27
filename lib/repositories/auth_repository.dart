@@ -32,6 +32,14 @@ class AuthRepository {
     );
   }
 
+  /// Dev-only bypass for testing without native Google/Apple OAuth
+  /// configuration: signs in with a pre-seeded email/password test account
+  /// rather than a real provider. Only ever called from behind a
+  /// kDebugMode guard in the UI.
+  Future<void> signInWithTestAccount(String email, String password) async {
+    await _client.auth.signInWithPassword(email: email, password: password);
+  }
+
   Future<void> upsertProfile({
     required String name,
     String? avatarUrl,
