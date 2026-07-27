@@ -43,6 +43,7 @@ void main() {
     when(() => mockFriendRepo.watchFriendships()).thenAnswer(
       (_) => Stream.value([]),
     );
+    when(() => mockFriendRepo.getMyProfile()).thenAnswer((_) async => null);
     when(() => mockGroupRepo.watchMyGroups()).thenAnswer(
       (_) => Stream.value([]),
     );

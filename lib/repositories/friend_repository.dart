@@ -6,6 +6,21 @@ class FriendRepository {
   final SupabaseClient _client;
   FriendRepository(this._client);
 
+  Future<AppUser?> getMyProfile() async {
+    final me = _client.auth.currentUser!.id;
+    final row = await _client.from('users').select().eq('id', me).maybeSingle();
+    return row == null ? null : AppUser.fromJson(row);
+  }
+
+  /// Looks up display name/avatar for other users via `public_profiles`
+  /// (name, avatar_url only — RLS locks the base `users` table to
+  /// own-row-only SELECT to keep phone_number private, see Task 2's fix).
+  Future<List<AppUser>> getPublicProfiles(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    final rows = await _client.from('public_profiles').select().inFilter('id', ids);
+    return rows.map(AppUser.fromJson).toList();
+  }
+
   Future<AppUser?> searchByPhone(String phone) async {
     // Calls the find_user_by_phone RPC rather than selecting the users
     // table directly: RLS locks users to own-row-only SELECT (Task 2's
