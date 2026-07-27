@@ -1533,18 +1533,45 @@ class MockQueryBuilder extends Mock implements SupabaseQueryBuilder {}
 // reliably stub then() (its onError named-argument shape doesn't match
 // what Dart's await protocol actually passes). A hand-written Fake with a
 // real then() implementation sidesteps that — Fake's noSuchMethod covers
-// every other interface member this test never calls. select()/single()
-// both return `this` so insert(...).select().single() chains also work.
-class _FakeQueryResult extends Fake
+// every other interface member this test never calls.
+//
+// The three-tier shape below (rather than one Fake reused at every level)
+// is required, not stylistic: verified empirically against the installed
+// postgrest package that insert(...).select() resolves via
+// PostgrestTransformBuilder.select() (NOT PostgrestQueryBuilder.select()),
+// which returns PostgrestTransformBuilder<PostgrestList> — a different
+// generic instantiation than insert()'s own PostgrestFilterBuilder<PostgrestMap>
+// return type — and .single() on that returns PostgrestTransformBuilder<PostgrestMap>.
+// A single Fake class cannot satisfy all three signatures simultaneously.
+class _FakeSingleRow extends Fake
+    implements PostgrestTransformBuilder<PostgrestMap> {
+  final PostgrestMap value;
+  _FakeSingleRow(this.value);
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
+
+class _FakeListResult extends Fake
+    implements PostgrestTransformBuilder<PostgrestList> {
+  final PostgrestMap singleValue;
+  _FakeListResult(this.singleValue);
+
+  @override
+  PostgrestTransformBuilder<PostgrestMap> single() => _FakeSingleRow(singleValue);
+}
+
+class _FakeInsertResult extends Fake
     implements PostgrestFilterBuilder<PostgrestMap> {
   final PostgrestMap value;
-  _FakeQueryResult([this.value = const {}]);
+  _FakeInsertResult([this.value = const {}]);
 
   @override
-  PostgrestFilterBuilder<PostgrestMap> select([String columns = '*']) => this;
-
-  @override
-  PostgrestTransformBuilder<PostgrestMap> single() => this;
+  PostgrestTransformBuilder<PostgrestList> select([String columns = '*']) =>
+      _FakeListResult(value);
 
   @override
   Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
@@ -1570,7 +1597,7 @@ void main() {
       ),
     );
     when(() => client.from('friendships')).thenAnswer((_) => table);
-    when(() => table.insert(any())).thenAnswer((_) => _FakeQueryResult());
+    when(() => table.insert(any())).thenAnswer((_) => _FakeInsertResult());
 
     final repo = FriendRepository(client);
     await repo.sendFriendRequest('aaaaaaaa-0000-0000-0000-000000000000');
@@ -1769,18 +1796,45 @@ class MockQueryBuilder extends Mock implements SupabaseQueryBuilder {}
 // reliably stub then() (its onError named-argument shape doesn't match
 // what Dart's await protocol actually passes). A hand-written Fake with a
 // real then() implementation sidesteps that — Fake's noSuchMethod covers
-// every other interface member this test never calls. select()/single()
-// both return `this` so insert(...).select().single() chains also work.
-class _FakeQueryResult extends Fake
+// every other interface member this test never calls.
+//
+// The three-tier shape below (rather than one Fake reused at every level)
+// is required, not stylistic: verified empirically against the installed
+// postgrest package that insert(...).select() resolves via
+// PostgrestTransformBuilder.select() (NOT PostgrestQueryBuilder.select()),
+// which returns PostgrestTransformBuilder<PostgrestList> — a different
+// generic instantiation than insert()'s own PostgrestFilterBuilder<PostgrestMap>
+// return type — and .single() on that returns PostgrestTransformBuilder<PostgrestMap>.
+// A single Fake class cannot satisfy all three signatures simultaneously.
+class _FakeSingleRow extends Fake
+    implements PostgrestTransformBuilder<PostgrestMap> {
+  final PostgrestMap value;
+  _FakeSingleRow(this.value);
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
+
+class _FakeListResult extends Fake
+    implements PostgrestTransformBuilder<PostgrestList> {
+  final PostgrestMap singleValue;
+  _FakeListResult(this.singleValue);
+
+  @override
+  PostgrestTransformBuilder<PostgrestMap> single() => _FakeSingleRow(singleValue);
+}
+
+class _FakeInsertResult extends Fake
     implements PostgrestFilterBuilder<PostgrestMap> {
   final PostgrestMap value;
-  _FakeQueryResult([this.value = const {}]);
+  _FakeInsertResult([this.value = const {}]);
 
   @override
-  PostgrestFilterBuilder<PostgrestMap> select([String columns = '*']) => this;
-
-  @override
-  PostgrestTransformBuilder<PostgrestMap> single() => this;
+  PostgrestTransformBuilder<PostgrestList> select([String columns = '*']) =>
+      _FakeListResult(value);
 
   @override
   Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
@@ -1808,13 +1862,13 @@ void main() {
     );
     when(() => client.from('groups')).thenAnswer((_) => groupsTable);
     when(() => client.from('group_members')).thenAnswer((_) => membersTable);
-    when(() => groupsTable.insert(any())).thenAnswer((_) => _FakeQueryResult({
+    when(() => groupsTable.insert(any())).thenAnswer((_) => _FakeInsertResult({
           'id': 'g1',
           'name': 'Trip',
           'created_by': 'u1',
           'invite_code': 'abc123',
         }));
-    when(() => membersTable.insert(any())).thenAnswer((_) => _FakeQueryResult());
+    when(() => membersTable.insert(any())).thenAnswer((_) => _FakeInsertResult());
 
     final repo = GroupRepository(client);
     final group = await repo.createGroup('Trip');
@@ -1983,18 +2037,45 @@ class MockQueryBuilder extends Mock implements SupabaseQueryBuilder {}
 // reliably stub then() (its onError named-argument shape doesn't match
 // what Dart's await protocol actually passes). A hand-written Fake with a
 // real then() implementation sidesteps that — Fake's noSuchMethod covers
-// every other interface member this test never calls. select()/single()
-// both return `this` so insert(...).select().single() chains also work.
-class _FakeQueryResult extends Fake
+// every other interface member this test never calls.
+//
+// The three-tier shape below (rather than one Fake reused at every level)
+// is required, not stylistic: verified empirically against the installed
+// postgrest package that insert(...).select() resolves via
+// PostgrestTransformBuilder.select() (NOT PostgrestQueryBuilder.select()),
+// which returns PostgrestTransformBuilder<PostgrestList> — a different
+// generic instantiation than insert()'s own PostgrestFilterBuilder<PostgrestMap>
+// return type — and .single() on that returns PostgrestTransformBuilder<PostgrestMap>.
+// A single Fake class cannot satisfy all three signatures simultaneously.
+class _FakeSingleRow extends Fake
+    implements PostgrestTransformBuilder<PostgrestMap> {
+  final PostgrestMap value;
+  _FakeSingleRow(this.value);
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
+
+class _FakeListResult extends Fake
+    implements PostgrestTransformBuilder<PostgrestList> {
+  final PostgrestMap singleValue;
+  _FakeListResult(this.singleValue);
+
+  @override
+  PostgrestTransformBuilder<PostgrestMap> single() => _FakeSingleRow(singleValue);
+}
+
+class _FakeInsertResult extends Fake
     implements PostgrestFilterBuilder<PostgrestMap> {
   final PostgrestMap value;
-  _FakeQueryResult([this.value = const {}]);
+  _FakeInsertResult([this.value = const {}]);
 
   @override
-  PostgrestFilterBuilder<PostgrestMap> select([String columns = '*']) => this;
-
-  @override
-  PostgrestTransformBuilder<PostgrestMap> single() => this;
+  PostgrestTransformBuilder<PostgrestList> select([String columns = '*']) =>
+      _FakeListResult(value);
 
   @override
   Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
@@ -2022,7 +2103,7 @@ void main() {
     );
     when(() => client.from('expenses')).thenAnswer((_) => expensesTable);
     when(() => client.from('expense_splits')).thenAnswer((_) => splitsTable);
-    when(() => expensesTable.insert(any())).thenAnswer((_) => _FakeQueryResult({
+    when(() => expensesTable.insert(any())).thenAnswer((_) => _FakeInsertResult({
           'id': 'e1',
           'group_id': null,
           'paid_by': 'u1',
@@ -2036,7 +2117,7 @@ void main() {
           'edited_by': null,
           'deleted_at': null,
         }));
-    when(() => splitsTable.insert(any())).thenAnswer((_) => _FakeQueryResult());
+    when(() => splitsTable.insert(any())).thenAnswer((_) => _FakeInsertResult());
 
     final repo = ExpenseRepository(client);
     final expense = await repo.createExpense(
@@ -2274,18 +2355,45 @@ class MockQueryBuilder extends Mock implements SupabaseQueryBuilder {}
 // reliably stub then() (its onError named-argument shape doesn't match
 // what Dart's await protocol actually passes). A hand-written Fake with a
 // real then() implementation sidesteps that — Fake's noSuchMethod covers
-// every other interface member this test never calls. select()/single()
-// both return `this` so insert(...).select().single() chains also work.
-class _FakeQueryResult extends Fake
+// every other interface member this test never calls.
+//
+// The three-tier shape below (rather than one Fake reused at every level)
+// is required, not stylistic: verified empirically against the installed
+// postgrest package that insert(...).select() resolves via
+// PostgrestTransformBuilder.select() (NOT PostgrestQueryBuilder.select()),
+// which returns PostgrestTransformBuilder<PostgrestList> — a different
+// generic instantiation than insert()'s own PostgrestFilterBuilder<PostgrestMap>
+// return type — and .single() on that returns PostgrestTransformBuilder<PostgrestMap>.
+// A single Fake class cannot satisfy all three signatures simultaneously.
+class _FakeSingleRow extends Fake
+    implements PostgrestTransformBuilder<PostgrestMap> {
+  final PostgrestMap value;
+  _FakeSingleRow(this.value);
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
+      {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
+  }
+}
+
+class _FakeListResult extends Fake
+    implements PostgrestTransformBuilder<PostgrestList> {
+  final PostgrestMap singleValue;
+  _FakeListResult(this.singleValue);
+
+  @override
+  PostgrestTransformBuilder<PostgrestMap> single() => _FakeSingleRow(singleValue);
+}
+
+class _FakeInsertResult extends Fake
     implements PostgrestFilterBuilder<PostgrestMap> {
   final PostgrestMap value;
-  _FakeQueryResult([this.value = const {}]);
+  _FakeInsertResult([this.value = const {}]);
 
   @override
-  PostgrestFilterBuilder<PostgrestMap> select([String columns = '*']) => this;
-
-  @override
-  PostgrestTransformBuilder<PostgrestMap> single() => this;
+  PostgrestTransformBuilder<PostgrestList> select([String columns = '*']) =>
+      _FakeListResult(value);
 
   @override
   Future<U> then<U>(FutureOr<U> Function(PostgrestMap) onValue,
@@ -2311,7 +2419,7 @@ void main() {
       ),
     );
     when(() => client.from('settlements')).thenAnswer((_) => table);
-    when(() => table.insert(any())).thenAnswer((_) => _FakeQueryResult({
+    when(() => table.insert(any())).thenAnswer((_) => _FakeInsertResult({
           'id': 's1',
           'group_id': null,
           'from_user': 'u1',
