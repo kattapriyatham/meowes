@@ -81,8 +81,28 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       }
       return (_percentTotal - 100).abs() < 0.01;
     }
-    if (_splitType == SplitType.exact) return (_exactTotal - _totalAmount).abs() < 0.01;
+    if (_splitType == SplitType.exact) {
+      return (_exactTotal - _totalAmount).abs() < 0.01 && _computeExactSharesInPaise() != null;
+    }
     return true;
+  }
+
+  Map<String, int>? _computeExactSharesInPaise() {
+    final ids = widget.participantIds;
+    final amountMinorUnits = (_totalAmount * 100).round();
+    final result = <String, int>{};
+    var allocated = 0;
+    for (var i = 0; i < ids.length; i++) {
+      if (i == ids.length - 1) {
+        result[ids[i]] = amountMinorUnits - allocated;
+      } else {
+        final share = (_exactAmounts[ids[i]]! * 100).round();
+        result[ids[i]] = share;
+        allocated += share;
+      }
+    }
+    if (result.values.any((v) => v < 0)) return null;
+    return result;
   }
 
   @override
@@ -256,21 +276,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                   }
                                 : null,
                             exactAmounts: _splitType == SplitType.exact
-                                ? () {
-                                    final ids = widget.participantIds;
-                                    final result = <String, int>{};
-                                    var allocated = 0;
-                                    for (var i = 0; i < ids.length; i++) {
-                                      if (i == ids.length - 1) {
-                                        result[ids[i]] = amountMinorUnits - allocated;
-                                      } else {
-                                        final share = (_exactAmounts[ids[i]]! * 100).round();
-                                        result[ids[i]] = share;
-                                        allocated += share;
-                                      }
-                                    }
-                                    return result;
-                                  }()
+                                ? _computeExactSharesInPaise()
                                 : null,
                             expenseDate: DateTime.now(),
                           );
