@@ -75,7 +75,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   bool get _canSave {
     if (_descriptionController.text.trim().isEmpty || _totalAmount <= 0) return false;
-    if (_splitType == SplitType.percentage) return (_percentTotal - 100).abs() < 0.01;
+    if (_splitType == SplitType.percentage) {
+      if (widget.participantIds.any((id) => double.tryParse(_percentControllers[id]!.text) == null)) {
+        return false;
+      }
+      return (_percentTotal - 100).abs() < 0.01;
+    }
     if (_splitType == SplitType.exact) return (_exactTotal - _totalAmount).abs() < 0.01;
     return true;
   }
@@ -251,10 +256,21 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                   }
                                 : null,
                             exactAmounts: _splitType == SplitType.exact
-                                ? {
-                                    for (final id in widget.participantIds)
-                                      id: (_exactAmounts[id]! * 100).round(),
-                                  }
+                                ? () {
+                                    final ids = widget.participantIds;
+                                    final result = <String, int>{};
+                                    var allocated = 0;
+                                    for (var i = 0; i < ids.length; i++) {
+                                      if (i == ids.length - 1) {
+                                        result[ids[i]] = amountMinorUnits - allocated;
+                                      } else {
+                                        final share = (_exactAmounts[ids[i]]! * 100).round();
+                                        result[ids[i]] = share;
+                                        allocated += share;
+                                      }
+                                    }
+                                    return result;
+                                  }()
                                 : null,
                             expenseDate: DateTime.now(),
                           );
