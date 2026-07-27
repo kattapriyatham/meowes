@@ -50,3 +50,6 @@ app.*.map.json
 # Supabase local dev state
 supabase/.branches/
 supabase/.temp/
+
+# Local Claude Code session state (not project source)
+.claude/
