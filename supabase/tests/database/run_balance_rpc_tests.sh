@@ -11,6 +11,7 @@ set -euo pipefail
 ALEX='11111111-1111-1111-1111-111111111111'
 SAM='22222222-2222-2222-2222-222222222222'
 EXPENSE1='33333333-3333-3333-3333-333333333333'
+EXPENSE_SAM_PAID='77777777-7777-7777-7777-777777777777'
 
 pass_count=0
 fail_count=0
@@ -18,8 +19,8 @@ fail_count=0
 cleanup() {
   supabase db query --linked "
     delete from settlements where from_user in ('$ALEX','$SAM') or to_user in ('$ALEX','$SAM');
-    delete from expense_splits where expense_id = '$EXPENSE1';
-    delete from expenses where id = '$EXPENSE1';
+    delete from expense_splits where expense_id in ('$EXPENSE1', '$EXPENSE_SAM_PAID');
+    delete from expenses where id in ('$EXPENSE1', '$EXPENSE_SAM_PAID');
     delete from users where id in ('$ALEX','$SAM');
     delete from auth.users where id in ('$ALEX','$SAM');
   " > /dev/null 2>&1 || true
@@ -77,6 +78,18 @@ supabase db query --linked "
 
 check "Balance flips when the settlement direction reverses (Alex pays Sam 200 with no expense behind it, so Sam now owes Alex 200)" \
   "get_friend_balance('$ALEX', '$SAM') = 200.00" \
+  "get_friend_balance('$ALEX', '$SAM')"
+
+supabase db query --linked "
+  insert into expenses (id, group_id, paid_by, description, amount, expense_date, created_by)
+  values ('$EXPENSE_SAM_PAID', null, '$SAM', 'Groceries', 300.00, current_date, '$SAM');
+  insert into expense_splits (expense_id, user_id, share_amount) values
+    ('$EXPENSE_SAM_PAID', '$ALEX', 150.00),
+    ('$EXPENSE_SAM_PAID', '$SAM', 150.00);
+" > /dev/null
+
+check "paid_by_b term reduces the balance correctly (Sam pays for groceries, Alex owes his 150 share, netting the current 200 down to 50)" \
+  "get_friend_balance('$ALEX', '$SAM') = 50.00" \
   "get_friend_balance('$ALEX', '$SAM')"
 
 echo "$pass_count passed, $fail_count failed"
