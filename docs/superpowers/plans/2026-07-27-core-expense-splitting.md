@@ -1483,7 +1483,7 @@ git commit -m "feat: add Google/Apple sign-in and profile setup"
 - Test: `test/repositories/friend_repository_test.dart`
 
 **Interfaces:**
-- Consumes: `supabaseClientProvider`, `Friendship`/`AppUser` models (Task 6).
+- Consumes: `supabaseClientProvider`, `Friendship`/`AppUser` models (Task 6), and the `find_user_by_phone(p_phone text)` RPC from Task 2's RLS fix migration (`users` is locked to own-row-only SELECT, so phone lookup must go through this SECURITY DEFINER function rather than a direct table query).
 - Produces: `FriendRepository` with `searchByPhone(String phone) -> Future<AppUser?>`, `sendFriendRequest(String toUserId) -> Future<void>`, `acceptFriendRequest(String fromUserId) -> Future<void>`, `watchFriendships() -> Stream<List<Friendship>>` — consumed by `add_friend_screen.dart` and the home screen (Task 10).
 
 - [ ] **Step 1: Write the failing test**
@@ -1552,9 +1552,14 @@ class FriendRepository {
   FriendRepository(this._client);
 
   Future<AppUser?> searchByPhone(String phone) async {
-    final rows = await _client.from('users').select().eq('phone_number', phone).limit(1);
-    if (rows.isEmpty) return null;
-    return AppUser.fromJson(rows.first);
+    // Calls the find_user_by_phone RPC rather than selecting the users
+    // table directly: RLS locks users to own-row-only SELECT (Task 2's
+    // RLS fix), so phone lookup goes through this SECURITY DEFINER
+    // function instead, which also never returns phone_number itself back.
+    final rows = await _client.rpc('find_user_by_phone', params: {'p_phone': phone});
+    final results = rows as List<dynamic>;
+    if (results.isEmpty) return null;
+    return AppUser.fromJson(results.first as Map<String, dynamic>);
   }
 
   Future<void> sendFriendRequest(String toUserId) async {
