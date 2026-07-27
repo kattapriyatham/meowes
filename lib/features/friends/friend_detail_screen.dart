@@ -54,7 +54,9 @@ class FriendDetailScreen extends ConsumerWidget {
                     if (iOwe) ...[
                       const SizedBox(width: 12),
                       Expanded(
-                        child: OutlinedButton(
+                        child: AppOutlinedButton(
+                          label: 'Settle Up',
+                          color: AppColors.coral,
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => SettleUpScreen(
@@ -63,14 +65,6 @@ class FriendDetailScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.coral,
-                            side: const BorderSide(color: AppColors.coral),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                          ),
-                          child: const Text('Settle Up'),
                         ),
                       ),
                     ],

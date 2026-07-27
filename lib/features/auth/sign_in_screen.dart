@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/repositories/auth_repository.dart';
 import 'package:meowes_app/features/auth/profile_setup_screen.dart';
 
@@ -56,16 +57,10 @@ class SignInScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
+                child: AppOutlinedButton(
+                  label: 'Continue with Apple',
+                  color: AppColors.textDark,
                   onPressed: () => handleSignIn(authRepo.signInWithApple),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textDark,
-                    side: const BorderSide(color: AppColors.textDark),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                  child: const Text('Continue with Apple'),
                 ),
               ),
               if (kDebugMode) ...[

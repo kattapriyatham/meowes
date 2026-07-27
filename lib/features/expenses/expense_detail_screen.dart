@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/app_theme.dart';
+import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/models/expense.dart';
 import 'package:meowes_app/repositories/expense_repository.dart';
 import 'package:meowes_app/features/expenses/add_expense_screen.dart';
@@ -31,7 +32,9 @@ class ExpenseDetailScreen extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: AppOutlinedButton(
+                    label: 'Edit',
+                    color: AppColors.coral,
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => AddExpenseScreen(
@@ -40,31 +43,17 @@ class ExpenseDetailScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.coral,
-                      side: const BorderSide(color: AppColors.coral),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                    ),
-                    child: const Text('Edit'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton(
+                  child: AppOutlinedButton(
+                    label: 'Delete',
+                    color: AppColors.owingText,
                     onPressed: () async {
                       await repo.deleteExpense(expense.id);
                       if (context.mounted) Navigator.of(context).pop();
                     },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.owingText,
-                      side: const BorderSide(color: AppColors.owingText),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                    ),
-                    child: const Text('Delete'),
                   ),
                 ),
               ],

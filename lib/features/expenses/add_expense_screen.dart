@@ -32,14 +32,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    _paidBy = widget.participantIds.first;
-    final evenPercent = (100 / widget.participantIds.length).toStringAsFixed(1);
+    _paidBy = widget.participantIds.isEmpty ? '' : widget.participantIds.first;
+    final evenPercent = widget.participantIds.isEmpty
+        ? '0'
+        : (100 / widget.participantIds.length).toStringAsFixed(1);
     for (final id in widget.participantIds) {
       _percentControllers[id] = TextEditingController(text: evenPercent);
       _exactAmounts[id] = 0;
     }
     _amountController.addListener(_onAmountChanged);
-    _profilesFuture = ref.read(friendRepositoryProvider).getPublicProfiles(widget.participantIds);
+    _profilesFuture = widget.participantIds.isEmpty
+        ? Future.value(<AppUser>[])
+        : ref.read(friendRepositoryProvider).getPublicProfiles(widget.participantIds);
   }
 
   void _onAmountChanged() {
@@ -109,6 +113,21 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   Widget build(BuildContext context) {
     final repo = ref.watch(expenseRepositoryProvider);
     _me = ref.watch(supabaseClientProvider).auth.currentUser!.id;
+
+    if (widget.participantIds.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Add expense')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'No participants to split this expense with yet.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Add expense')),

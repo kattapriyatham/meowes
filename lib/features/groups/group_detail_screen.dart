@@ -91,7 +91,7 @@ class GroupDetailScreen extends ConsumerWidget {
                               ),
                             ),
                             Text(
-                              '₹${d['amount']}',
+                              '₹${double.parse(d['amount'].toString()).toStringAsFixed(2)}',
                               style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.owingText),
                             ),
                           ],
