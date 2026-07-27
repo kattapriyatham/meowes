@@ -10,6 +10,7 @@ class GroupDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final client = ref.watch(supabaseClientProvider);
+    final me = client.auth.currentUser!.id;
     return Scaffold(
       appBar: AppBar(title: const Text('Group')),
       body: FutureBuilder(
@@ -26,16 +27,23 @@ class GroupDetailScreen extends ConsumerWidget {
                 ListTile(
                   title: Text('${d['from_user']} owes ${d['to_user']}'),
                   trailing: Text('₹${d['amount']}'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => SettleUpScreen(
-                        toUser: d['to_user'] as String,
-                        amountMinorUnits:
-                            (double.parse(d['amount'].toString()) * 100).round(),
-                        groupId: groupId,
-                      ),
-                    ),
-                  ),
+                  // markPaid always records from_user = me, so only the
+                  // actual debtor's own row should be tappable into
+                  // settle-up — otherwise a member could record a
+                  // settlement in their own name for someone else's debt.
+                  onTap: d['from_user'] == me
+                      ? () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => SettleUpScreen(
+                                toUser: d['to_user'] as String,
+                                amountMinorUnits:
+                                    (double.parse(d['amount'].toString()) * 100)
+                                        .round(),
+                                groupId: groupId,
+                              ),
+                            ),
+                          )
+                      : null,
                 ),
             ],
           );
