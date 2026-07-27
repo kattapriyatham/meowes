@@ -1,0 +1,14 @@
+.superpowers/
+
+# Flutter/Dart
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+**/ios/Pods/
+**/ios/Flutter/ephemeral/
+**/android/.gradle/
+
+# Supabase local dev
+supabase/.branches/
+supabase/.temp/
