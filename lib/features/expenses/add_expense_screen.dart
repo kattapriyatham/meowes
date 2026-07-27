@@ -4,10 +4,6 @@ import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/repositories/expense_repository.dart';
 import 'package:meowes_app/splitting/split_calculator.dart';
 
-final expenseRepositoryProvider = Provider<ExpenseRepository>(
-  (ref) => ExpenseRepository(ref.watch(supabaseClientProvider)),
-);
-
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final String? groupId;
   final List<String> participantIds;
