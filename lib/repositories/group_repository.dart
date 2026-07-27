@@ -6,18 +6,19 @@ class GroupRepository {
   GroupRepository(this._client);
 
   Future<Group> createGroup(String name) async {
-    final me = _client.auth.currentUser!.id;
-    final row = await _client
-        .from('groups')
-        .insert({'name': name, 'created_by': me})
-        .select()
-        .single();
-    final group = Group.fromJson(row);
-    await _client.from('group_members').insert({
-      'group_id': group.id,
-      'user_id': me,
-    });
-    return group;
+    // Calls the create_group RPC rather than insert().select().single():
+    // groups is locked to member-only SELECT, and at the moment the
+    // creator's own insert would be read back, they haven't been added to
+    // group_members yet (that was a second, later statement) — RLS filters
+    // the just-inserted row out and .single() gets zero rows. The RPC does
+    // both inserts atomically as SECURITY DEFINER, bypassing that ordering
+    // problem entirely.
+    final rows = await _client.rpc('create_group', params: {'p_name': name});
+    final results = rows is List<dynamic> ? rows : const <dynamic>[];
+    if (results.isEmpty) {
+      throw StateError('Failed to create group');
+    }
+    return Group.fromJson(results.first as Map<String, dynamic>);
   }
 
   Future<Group> joinByInviteCode(String code) async {

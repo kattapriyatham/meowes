@@ -129,6 +129,29 @@ check "A confirmed group settlement removes that debtor from the simplified list
   "(select count(*) from get_group_debts('$TRIP_GROUP') where from_user = '$PRIYA' and to_user = '$ALEX' and amount = 100.00) = 1 and (select count(*) from get_group_debts('$TRIP_GROUP')) = 1" \
   "(select array_agg(row(from_user, to_user, amount)) from get_group_debts('$TRIP_GROUP'))"
 
+# Regression test for RLS recursion: every check above runs as the
+# superuser/service role (via `supabase db query`), which bypasses RLS
+# entirely and would not have caught the "infinite recursion detected in
+# policy for relation ..." errors found in review — those only surface
+# under the real `authenticated` role with a real auth.uid(). This check
+# simulates that by setting `role authenticated` plus a JWT sub claim
+# before calling get_group_debts, which internally reads group_members,
+# expenses, and expense_splits — the exact tables whose cross-referencing
+# SELECT policies previously recursed into each other.
+rls_json=$(supabase db query --linked --output-format json "
+  set local role authenticated;
+  set local request.jwt.claim.sub = '$ALEX';
+  select (select count(*) from get_group_debts('$TRIP_GROUP') where from_user = '$PRIYA' and to_user = '$ALEX' and amount = 100.00) = 1 as passed;
+" 2>/dev/null)
+rls_passed=$(echo "$rls_json" | jq -r '.rows[0].passed // "false"')
+if [[ "$rls_passed" == "true" ]]; then
+  echo "ok - get_group_debts works under real authenticated-role RLS (no policy recursion)"
+  pass_count=$((pass_count + 1))
+else
+  echo "not ok - get_group_debts under real authenticated-role RLS ($rls_json)"
+  fail_count=$((fail_count + 1))
+fi
+
 supabase db query --linked "
   insert into groups (id, name, created_by) values ('$EMPTY_GROUP', 'Empty', '$ALEX');
   insert into group_members (group_id, user_id) values ('$EMPTY_GROUP', '$ALEX');
