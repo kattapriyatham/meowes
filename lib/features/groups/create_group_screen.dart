@@ -86,6 +86,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               child: ElevatedButton(
                 onPressed: () async {
                   final group = await repo.createGroup(_nameController.text.trim());
+                  if (!mounted) return;
                   setState(() => _created = group);
                 },
                 child: const Text('Create'),
