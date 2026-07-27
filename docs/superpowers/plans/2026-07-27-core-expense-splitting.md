@@ -6,7 +6,7 @@
 
 **Architecture:** Flutter client (Riverpod for state) talking to Supabase (Postgres + Auth + Realtime). All money math (balance netting, debt simplification, split validation) lives in Postgres RPC functions, computed on read and never cached, so no client can drift from another. The Flutter layer is a thin repository + UI shell around those RPCs and tables.
 
-**Tech Stack:** Flutter/Dart, `flutter_riverpod`, `supabase_flutter`, `google_sign_in`, `sign_in_with_apple`, Supabase Postgres + pgTAP (`supabase test db`) for SQL unit tests, `flutter_test`/`mocktail` for Dart tests.
+**Tech Stack:** Flutter/Dart, `flutter_riverpod`, `supabase_flutter`, `google_sign_in`, `sign_in_with_apple`, Supabase Postgres with stateless SQL-assertion scripts (via `supabase db query --linked` + `jq`) for SQL unit tests, `flutter_test`/`mocktail` for Dart tests.
 
 ## Global Constraints
 
@@ -16,7 +16,7 @@
 - Settlements require two-sided confirmation (`pending_confirmation` → `confirmed`); only `confirmed` settlements net against balances.
 - Friend adding via phone search requires accept (`pending` → `accepted`); friendships via group invite link are auto-`accepted`.
 - Auth is Google/Apple sign-in only. Phone number is a separate, optional profile field used solely for friend search — never used for login.
-- **Backend target is the linked cloud Supabase project (ref `pacbkvuepitmmqxudscx`), not a local Docker stack.** Every task that applies a migration or runs pgTAP tests uses `supabase db push --linked` and `supabase test db --linked` (never `supabase start` / `supabase db reset` / `--local`). `supabase link --project-ref pacbkvuepitmmqxudscx` has already been run in the repo root — no task needs to repeat it.
+- **Backend target is the linked cloud Supabase project (ref `pacbkvuepitmmqxudscx`), not a local Docker stack, and no task may introduce a Docker dependency.** Migrations apply via `supabase db push --linked` (never `supabase start` / `supabase db reset` / `--local` / `supabase db diff`, all of which require Docker). SQL tests run as plain bash scripts driving stateless `supabase db query --linked --output-format json` calls parsed with `jq` (never `supabase test db`, which also requires Docker for its `pg_prove` runner). `supabase link --project-ref pacbkvuepitmmqxudscx` has already been run in the repo root — no task needs to repeat it.
 - **Every table gets Row Level Security enabled with policies scoping access to rows the requesting user actually participates in** (own profile, own friendships, groups/expenses/splits/settlements they're a party to). This is a real cloud project, not disposable local data — RLS is not optional. `get_friend_balance` and `get_group_debts` stay `security invoker` (the default) — the RLS policies above already make each function's underlying reads visible exactly when the caller is a legitimate participant — but each function still adds an explicit `auth.uid()` guard (raising an exception rather than silently returning zero/empty) so an unauthorized call fails loudly instead of returning misleadingly empty data.
 
 ---
@@ -30,7 +30,7 @@ supabase/
     0002_balance_rpcs.sql
   tests/
     database/
-      balance_rpc.test.sql
+      run_balance_rpc_tests.sh
 
 lib/
   main.dart
@@ -384,7 +384,7 @@ create policy settlements_update_payee_confirms on settlements
 - [ ] **Step 2: Push the migration to the linked cloud project**
 
 Run: `supabase db push --linked`
-Expected: migration applies with no errors. Confirm with `supabase db diff --linked` showing no drift.
+Expected: migration applies with no errors. Confirm with a direct check, e.g. `supabase db query --linked "select tablename from pg_tables where schemaname='public';"` — do not use `supabase db diff --linked`, which requires spinning up a local Docker shadow database and is unnecessary for a cloud-only workflow.
 
 - [ ] **Step 3: Commit**
 
@@ -399,62 +399,99 @@ git commit -m "feat: add core schema migration with RLS policies (users, groups,
 
 **Files:**
 - Create: `supabase/migrations/0002_balance_rpcs.sql` (this task writes the `get_friend_balance` function; Task 4 appends `get_group_debts` to the same file)
-- Create: `supabase/tests/database/balance_rpc.test.sql`
+- Create: `supabase/tests/database/run_balance_rpc_tests.sh`
 
 **Interfaces:**
 - Consumes: `expenses`, `expense_splits`, `settlements` tables from Task 2.
 - Produces: `get_friend_balance(user_a uuid, user_b uuid) returns numeric` — positive means `user_b` owes `user_a`, negative means `user_a` owes `user_b`. Consumed by `friend_repository.dart` in Task 7 and the home/friend-detail screens in Tasks 10–11.
 
-- [ ] **Step 1: Write the failing pgTAP test**
+**Why not pgTAP/`supabase test db`:** that command requires Docker (to run the `pg_prove` test runner), and this project is cloud-only with no local Docker dependency. It also turns out pgTAP's `plan()`/`is()` rely on session-scoped state that doesn't survive across separate `supabase db query --linked` invocations (each is a fresh connection) — so instead, this test is a plain bash script that runs stateless SQL boolean assertions directly against the linked cloud project via `supabase db query --linked --output-format json`, parsed with `jq`. No Docker, no pgTAP, no local Postgres.
 
-```sql
--- supabase/tests/database/balance_rpc.test.sql
-begin;
-select plan(2);
+- [ ] **Step 1: Write the failing test script**
 
-insert into auth.users (id) values
-  ('11111111-1111-1111-1111-111111111111'),
-  ('22222222-2222-2222-2222-222222222222');
+```bash
+#!/usr/bin/env bash
+# supabase/tests/database/run_balance_rpc_tests.sh
+#
+# Drives assertions against the linked cloud Supabase project directly —
+# no Docker, no local Postgres. Each `supabase db query --linked` call is
+# a fresh connection, so fixtures are set up via plain INSERTs (not a
+# transaction held open across calls) and torn down at the end via a trap,
+# making repeated runs idempotent.
+set -euo pipefail
 
-insert into users (id, name) values
-  ('11111111-1111-1111-1111-111111111111', 'Alex'),
-  ('22222222-2222-2222-2222-222222222222', 'Sam');
+ALEX='11111111-1111-1111-1111-111111111111'
+SAM='22222222-2222-2222-2222-222222222222'
+EXPENSE1='33333333-3333-3333-3333-333333333333'
 
--- Alex pays 1000, split evenly (500/500) with Sam, no group.
-insert into expenses (id, group_id, paid_by, description, amount, expense_date, created_by)
-values ('33333333-3333-3333-3333-333333333333', null,
-        '11111111-1111-1111-1111-111111111111', 'Dinner', 1000.00, current_date,
-        '11111111-1111-1111-1111-111111111111');
+pass_count=0
+fail_count=0
 
-insert into expense_splits (expense_id, user_id, share_amount) values
-  ('33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 500.00),
-  ('33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 500.00);
+cleanup() {
+  supabase db query --linked "
+    delete from settlements where from_user in ('$ALEX','$SAM') or to_user in ('$ALEX','$SAM');
+    delete from expense_splits where expense_id = '$EXPENSE1';
+    delete from expenses where id = '$EXPENSE1';
+    delete from users where id in ('$ALEX','$SAM');
+    delete from auth.users where id in ('$ALEX','$SAM');
+  " > /dev/null 2>&1 || true
+}
 
-select is(
-  get_friend_balance('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
-  500.00,
-  'Sam owes Alex 500 before any settlement'
-);
+trap cleanup EXIT
+cleanup  # idempotent pre-clean in case a previous run left fixtures behind
 
--- Sam confirms a 500 settlement to Alex — balance should zero out.
-insert into settlements (group_id, from_user, to_user, amount, status, confirmed_at)
-values (null, '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111',
-        500.00, 'confirmed', now());
+check() {
+  local description="$1"
+  local bool_expr="$2"
+  local actual_expr="$3"
+  local json
+  json=$(supabase db query --linked --output-format json \
+    "select ($bool_expr) as passed, ($actual_expr) as actual;" 2>/dev/null)
+  local passed actual
+  passed=$(echo "$json" | jq -r '.rows[0].passed')
+  actual=$(echo "$json" | jq -r '.rows[0].actual')
+  if [[ "$passed" == "true" ]]; then
+    echo "ok - $description"
+    pass_count=$((pass_count + 1))
+  else
+    echo "not ok - $description (actual: $actual)"
+    fail_count=$((fail_count + 1))
+  fi
+}
 
-select is(
-  get_friend_balance('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
-  0.00,
-  'Balance is zero after a confirmed settlement covers the debt'
-);
+supabase db query --linked "
+  insert into auth.users (id) values ('$ALEX'), ('$SAM');
+  insert into users (id, name) values ('$ALEX', 'Alex'), ('$SAM', 'Sam');
+  insert into expenses (id, group_id, paid_by, description, amount, expense_date, created_by)
+  values ('$EXPENSE1', null, '$ALEX', 'Dinner', 1000.00, current_date, '$ALEX');
+  insert into expense_splits (expense_id, user_id, share_amount) values
+    ('$EXPENSE1', '$ALEX', 500.00),
+    ('$EXPENSE1', '$SAM', 500.00);
+" > /dev/null
 
-select * from finish();
-rollback;
+check "Sam owes Alex 500 before any settlement" \
+  "get_friend_balance('$ALEX', '$SAM') = 500.00" \
+  "get_friend_balance('$ALEX', '$SAM')"
+
+supabase db query --linked "
+  insert into settlements (group_id, from_user, to_user, amount, status, confirmed_at)
+  values (null, '$SAM', '$ALEX', 500.00, 'confirmed', now());
+" > /dev/null
+
+check "Balance is zero after a confirmed settlement covers the debt" \
+  "get_friend_balance('$ALEX', '$SAM') = 0.00" \
+  "get_friend_balance('$ALEX', '$SAM')"
+
+echo "$pass_count passed, $fail_count failed"
+[[ "$fail_count" -eq 0 ]]
 ```
+
+Make it executable: `chmod +x supabase/tests/database/run_balance_rpc_tests.sh`
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `supabase test db --linked`
-Expected: FAIL — `function get_friend_balance(uuid, uuid) does not exist`.
+Run: `./supabase/tests/database/run_balance_rpc_tests.sh`
+Expected: FAIL — the `supabase db query` calls invoking `get_friend_balance` return a JSON error (`function get_friend_balance(uuid, uuid) does not exist`) instead of a `passed`/`actual` row, so `jq` prints `null` and the check reports `not ok`.
 
 - [ ] **Step 3: Implement the RPC**
 
@@ -467,7 +504,7 @@ language plpgsql
 stable
 as $$
 begin
-  -- auth.uid() is null for the service/test context (pgTAP, migrations);
+  -- auth.uid() is null for the service/test context (test scripts, migrations);
   -- for any real authenticated call, only a party to the pair may query it.
   if auth.uid() is not null and auth.uid() not in (user_a, user_b) then
     raise exception 'not authorized to view this balance';
@@ -509,14 +546,14 @@ $$;
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `supabase test db --linked`
-Expected: PASS (2/2)
+Run: `./supabase/tests/database/run_balance_rpc_tests.sh`
+Expected: `2 passed, 0 failed`, exit code 0.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/0002_balance_rpcs.sql supabase/tests/database/balance_rpc.test.sql
-git commit -m "feat: add get_friend_balance RPC with pgTAP tests"
+git add supabase/migrations/0002_balance_rpcs.sql supabase/tests/database/run_balance_rpc_tests.sh
+git commit -m "feat: add get_friend_balance RPC with stateless SQL assertion tests"
 ```
 
 ---
@@ -525,55 +562,61 @@ git commit -m "feat: add get_friend_balance RPC with pgTAP tests"
 
 **Files:**
 - Modify: `supabase/migrations/0002_balance_rpcs.sql`
-- Modify: `supabase/tests/database/balance_rpc.test.sql`
+- Modify: `supabase/tests/database/run_balance_rpc_tests.sh`
 
 **Interfaces:**
 - Consumes: same tables as Task 3, plus `group_members`.
 - Produces: `get_group_debts(target_group_id uuid) returns table(from_user uuid, to_user uuid, amount numeric)` — the minimal simplified transaction list. Consumed by `group_repository.dart` (Task 8) and the group detail screen (Task 11).
 
-- [ ] **Step 1: Extend the pgTAP test**
+- [ ] **Step 1: Extend the test script**
 
-Append to `supabase/tests/database/balance_rpc.test.sql` (change `select plan(2);` to `select plan(3);` at the top):
+Add these fixture UUIDs alongside the existing `ALEX`/`SAM`/`EXPENSE1` variables near the top of `supabase/tests/database/run_balance_rpc_tests.sh`:
 
-```sql
--- Three-person group: A pays 300 split with B and C (100 each extra beyond
--- their own share is owed to A); B pays nothing; C pays nothing.
--- Expected simplified debts: B owes A 100, C owes A 100 (2 transactions,
--- not the naive 2 already-minimal case, so also verify total count).
+```bash
+PRIYA='44444444-4444-4444-4444-444444444444'
+TRIP_GROUP='55555555-5555-5555-5555-555555555555'
+EXPENSE2='66666666-6666-6666-6666-666666666666'
+```
 
-insert into auth.users (id) values ('44444444-4444-4444-4444-444444444444');
-insert into users (id, name) values ('44444444-4444-4444-4444-444444444444', 'Priya');
+Add their teardown to the `cleanup()` function (insert these lines before the existing `users`/`auth.users` deletes, and widen those two deletes to include `'$PRIYA'`):
 
-insert into groups (id, name, created_by)
-values ('55555555-5555-5555-5555-555555555555', 'Trip',
-        '11111111-1111-1111-1111-111111111111');
+```bash
+    delete from expense_splits where expense_id = '$EXPENSE2';
+    delete from expenses where id = '$EXPENSE2';
+    delete from group_members where group_id = '$TRIP_GROUP';
+    delete from groups where id = '$TRIP_GROUP';
+```
 
-insert into group_members (group_id, user_id) values
-  ('55555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111'),
-  ('55555555-5555-5555-5555-555555555555', '22222222-2222-2222-2222-222222222222'),
-  ('55555555-5555-5555-5555-555555555555', '44444444-4444-4444-4444-444444444444');
+(the `users`/`auth.users` delete lines become `delete from users where id in ('$ALEX','$SAM','$PRIYA');` and `delete from auth.users where id in ('$ALEX','$SAM','$PRIYA');`)
 
-insert into expenses (id, group_id, paid_by, description, amount, expense_date, created_by)
-values ('66666666-6666-6666-6666-666666666666', '55555555-5555-5555-5555-555555555555',
-        '11111111-1111-1111-1111-111111111111', 'Cabin', 300.00, current_date,
-        '11111111-1111-1111-1111-111111111111');
+Append this block to the end of the script, before the final `echo`/exit lines (three-person group: A pays 300 split with B and C — 100 each extra beyond their own share is owed to A; B and C pay nothing; expected simplified debts: B owes A 100, C owes A 100 — 2 transactions):
 
-insert into expense_splits (expense_id, user_id, share_amount) values
-  ('66666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111', 100.00),
-  ('66666666-6666-6666-6666-666666666666', '22222222-2222-2222-2222-222222222222', 100.00),
-  ('66666666-6666-6666-6666-666666666666', '44444444-4444-4444-4444-444444444444', 100.00);
+```bash
+supabase db query --linked "
+  insert into auth.users (id) values ('$PRIYA');
+  insert into users (id, name) values ('$PRIYA', 'Priya');
+  insert into groups (id, name, created_by) values ('$TRIP_GROUP', 'Trip', '$ALEX');
+  insert into group_members (group_id, user_id) values
+    ('$TRIP_GROUP', '$ALEX'),
+    ('$TRIP_GROUP', '$SAM'),
+    ('$TRIP_GROUP', '$PRIYA');
+  insert into expenses (id, group_id, paid_by, description, amount, expense_date, created_by)
+  values ('$EXPENSE2', '$TRIP_GROUP', '$ALEX', 'Cabin', 300.00, current_date, '$ALEX');
+  insert into expense_splits (expense_id, user_id, share_amount) values
+    ('$EXPENSE2', '$ALEX', 100.00),
+    ('$EXPENSE2', '$SAM', 100.00),
+    ('$EXPENSE2', '$PRIYA', 100.00);
+" > /dev/null
 
-select is(
-  (select count(*)::int from get_group_debts('55555555-5555-5555-5555-555555555555')),
-  2,
-  'Two simplified transactions settle a three-person group'
-);
+check "Two simplified transactions settle a three-person group" \
+  "(select count(*)::int from get_group_debts('$TRIP_GROUP')) = 2" \
+  "(select count(*)::int from get_group_debts('$TRIP_GROUP'))"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `supabase test db --linked`
-Expected: FAIL — `function get_group_debts(uuid) does not exist`.
+Run: `./supabase/tests/database/run_balance_rpc_tests.sh`
+Expected: the third check fails (`not ok`) because `get_group_debts` doesn't exist yet — `jq` prints `null` for `actual`, `1 failed` in the summary, non-zero exit.
 
 - [ ] **Step 3: Implement the RPC**
 
@@ -597,7 +640,7 @@ declare
   di int := 1;
   settle_amount numeric;
 begin
-  -- auth.uid() is null for the service/test context (pgTAP, migrations);
+  -- auth.uid() is null for the service/test context (test scripts, migrations);
   -- for any real authenticated call, only an actual member of the group
   -- may query its debts.
   if auth.uid() is not null and not exists (
@@ -669,13 +712,13 @@ $$;
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `supabase test db --linked`
-Expected: PASS (3/3)
+Run: `./supabase/tests/database/run_balance_rpc_tests.sh`
+Expected: `3 passed, 0 failed`, exit code 0.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/0002_balance_rpcs.sql supabase/tests/database/balance_rpc.test.sql
+git add supabase/migrations/0002_balance_rpcs.sql supabase/tests/database/run_balance_rpc_tests.sh
 git commit -m "feat: add get_group_debts RPC with greedy debt simplification"
 ```
 
