@@ -70,5 +70,14 @@ check "Balance is zero after a confirmed settlement covers the debt" \
   "get_friend_balance('$ALEX', '$SAM') = 0.00" \
   "get_friend_balance('$ALEX', '$SAM')"
 
+supabase db query --linked "
+  insert into settlements (group_id, from_user, to_user, amount, status, confirmed_at)
+  values (null, '$ALEX', '$SAM', 200.00, 'confirmed', now());
+" > /dev/null
+
+check "Balance flips when the settlement direction reverses (Alex pays Sam 200 with no expense behind it, so Sam now owes Alex 200)" \
+  "get_friend_balance('$ALEX', '$SAM') = 200.00" \
+  "get_friend_balance('$ALEX', '$SAM')"
+
 echo "$pass_count passed, $fail_count failed"
 [[ "$fail_count" -eq 0 ]]
