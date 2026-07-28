@@ -1,5 +1,7 @@
 // lib/core/app_theme.dart
 import 'package:flutter/material.dart';
+import 'package:meowes_app/core/theme/glass_tokens.dart';
+import 'package:meowes_app/core/theme/app_typography.dart';
 
 /// Warm cream + coral palette, matching the mockups in docs/designs/image.png.
 class AppColors {
@@ -40,64 +42,27 @@ class AppColors {
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get light {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.coral,
-      brightness: Brightness.light,
-    ).copyWith(
-      primary: AppColors.coral,
-      surface: AppColors.surface,
-    );
-
+  static ThemeData _base(Brightness brightness, GlassTokens tokens) {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: tokens.brandSolid,
+      brightness: brightness,
+    ).copyWith(primary: tokens.brandSolid);
     return ThemeData(
       useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.cream,
+      brightness: brightness,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: Colors.transparent,
+      textTheme: buildTextTheme(tokens.textPrimary),
+      extensions: [tokens],
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.cream,
-        foregroundColor: AppColors.textDark,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
       ),
-      cardTheme: CardThemeData(
-        color: AppColors.surface,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.coral,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          elevation: 0,
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppColors.coralDark),
-      ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.coral,
-        foregroundColor: Colors.white,
-        elevation: 2,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-      textTheme: ThemeData.light().textTheme.apply(
-            bodyColor: AppColors.textDark,
-            displayColor: AppColors.textDark,
-          ),
-      dividerTheme: const DividerThemeData(color: AppColors.divider, thickness: 1),
     );
   }
+
+  static ThemeData get light => _base(Brightness.light, GlassTokens.light);
+  static ThemeData get dark => _base(Brightness.dark, GlassTokens.dark);
 }

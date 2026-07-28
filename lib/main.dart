@@ -21,6 +21,8 @@ class MeowesApp extends StatelessWidget {
     return MaterialApp(
       title: 'Meowes',
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       home: const RootScreen(),
     );
   }
