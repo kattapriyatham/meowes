@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
+import 'package:meowes_app/features/expenses/expense_detail_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
 import 'package:meowes_app/features/settlements/settle_up_screen.dart';
 import 'package:meowes_app/models/app_user.dart';
+import 'package:meowes_app/models/expense.dart';
+import 'package:meowes_app/repositories/expense_repository.dart';
 
 class _GroupDetailData {
   final List<String> memberIds;
@@ -38,6 +41,7 @@ class GroupDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(supabaseClientProvider).auth.currentUser!.id;
+    final expenseRepo = ref.watch(expenseRepositoryProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Group')),
       body: FutureBuilder<_GroupDetailData>(
@@ -54,6 +58,47 @@ class GroupDetailScreen extends ConsumerWidget {
                 labels: [for (final id in data.memberIds) nameOf(id)],
               ),
               const SizedBox(height: 20),
+              const SectionHeader(title: 'Expenses'),
+              const SizedBox(height: 12),
+              StreamBuilder<List<Expense>>(
+                stream: expenseRepo.watchExpenses(groupId: groupId),
+                builder: (context, expenseSnapshot) {
+                  final expenses = expenseSnapshot.data ?? [];
+                  if (expenses.isEmpty) {
+                    return const EmptyStateBox(
+                      icon: Icons.receipt_long_outlined,
+                      message: 'No expenses logged in this group yet.',
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final e in expenses) ...[
+                        AppCard(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => ExpenseDetailScreen(expense: e)),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  e.description,
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                ),
+                              ),
+                              Text(
+                                '₹${(e.amountMinorUnits / 100).toStringAsFixed(2)}',
+                                style: const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
               const SectionHeader(title: 'Smart settle suggestions'),
               const SizedBox(height: 12),
               if (data.debts.isEmpty)
