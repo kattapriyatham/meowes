@@ -1,0 +1,12 @@
+-- ExpenseRepository.watchExpenses (GroupDetailScreen's Expenses list)
+-- subscribes to Realtime postgres_changes on `expenses` on top of its
+-- initial REST fetch. `expenses` was never added to the
+-- `supabase_realtime` publication — the earlier realtime fix
+-- (20260727191500) covered friendships, group_members, and settlements but
+-- missed this table. So the group expense list showed its correct initial
+-- snapshot, then the Realtime channel errored ("Please check Realtime is
+-- enabled for the given connect parameters"), flipping the StreamBuilder to
+-- an error snapshot (data -> null) a moment later and rendering the empty
+-- state despite real expenses existing — the exact "shows then goes empty"
+-- flake. Adding the table to the publication fixes it, same as the others.
+alter publication supabase_realtime add table expenses;
