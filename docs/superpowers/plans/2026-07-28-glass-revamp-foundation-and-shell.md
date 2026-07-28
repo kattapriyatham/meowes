@@ -22,6 +22,7 @@
 - No changes to `lib/repositories/`, `lib/models/`, or `supabase/`.
 - Every glass surface must render a solid opaque fallback when reduce-transparency is active; all motion collapses to instant when reduce-motion is active.
 - Access tokens only via `Theme.of(context).extension<GlassTokens>()!` — never hardcode colors in screens.
+- **Widget-test convention (binding on every screen/widget test below):** any widget that uses a glass primitive reads `GlassTokens` from the theme, so every `pumpWidget` MUST supply a theme: `MaterialApp(theme: AppTheme.dark, home: …)` (or `AppTheme.light`). Any screen that reads Supabase-backed providers (`supabaseClientProvider`, `friendRepositoryProvider`, `groupRepositoryProvider`) MUST override them in `ProviderScope(overrides: […])` with mocks — follow the exact pattern in `test/features/home/home_screen_test.dart` (mock `SupabaseClient`/`GoTrueClient`/repositories via `mocktail`, stub `auth.currentUser`, return `Stream.value([])` from `watch*` methods). Test snippets in tasks below show the assertion and theme; where a screen reads providers, add the same overrides block as that reference file. A bare `MaterialApp(home: X())` for a provider-backed screen is a defect.
 
 ---
 
@@ -229,8 +230,11 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     blurStrong: 24,
   );
 
+  // The two token sets are fixed const instances; the app never mutates or
+  // animates between them, so copyWith is identity and lerp snaps at the
+  // midpoint. This is a deliberate, documented choice, not an omission.
   @override
-  GlassTokens copyWith({Color? gradientTop}) => this; // full copyWith unused; identity is safe for our usage
+  GlassTokens copyWith() => this;
 
   @override
   GlassTokens lerp(ThemeExtension<GlassTokens>? other, double t) {
@@ -1216,7 +1220,9 @@ git commit -m "feat: add GlassNavDock"
 
 **Interfaces:**
 - Consumes: `GlassScaffold`, `GlassNavDock`, and the four tab screens (Tasks 12-15) + the reworked `HomeScreen` (Task 16).
-- Produces: `class HomeShell extends StatefulWidget` holding `int _index` and an `IndexedStack` of `[HomeScreen, FriendsScreen, GroupsScreen, ActivityScreen, ProfileScreen]`, with `GlassNavDock` as `bottomDock`. Each dock item maps directly to its tab: item `i` → `_index = i`.
+- Produces: `class HomeShell extends StatefulWidget` holding `int _index`, rendering a `Stack` of an `IndexedStack` of `[HomeScreen, FriendsScreen, GroupsScreen, ActivityScreen, ProfileScreen]` with the `GlassNavDock` floating on top (`Positioned` bottom). Each dock item maps directly to its tab: item `i` → `_index = i`.
+
+> Architecture note: each tab screen is its OWN full `GlassScaffold` (its own `GlassBackground` + `GlassAppBar`, no dock) so it renders and tests standalone. `HomeShell` is NOT a `GlassScaffold` — it only stacks the active tab and overlays the dock, avoiding a doubled background/Scaffold. Tab scroll content reserves ~100px bottom padding so the floating dock never covers the last row.
 
 > Design note: the dock carries five destination tabs (Home / Friends / Groups / Activity / Profile). The "Add" action is a `GlassButton` on the Home overview (Task 16) plus the existing per-screen add affordances (e.g. Group Detail), not a dock item. A raised center-Add dock button is an optional Phase 3 enhancement, out of scope here.
 
@@ -1226,25 +1232,50 @@ git commit -m "feat: add GlassNavDock"
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meowes_app/core/app_theme.dart';
+import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/repositories/friend_repository.dart';
+import 'package:meowes_app/repositories/group_repository.dart';
 import 'package:meowes_app/features/root/home_shell.dart';
 
+class MockSupabaseClient extends Mock implements SupabaseClient {}
+class MockGoTrueClient extends Mock implements GoTrueClient {}
+class MockFriendRepository extends Mock implements FriendRepository {}
+class MockGroupRepository extends Mock implements GroupRepository {}
+
 void main() {
-  testWidgets('shows dock and switches tab index on tap', (tester) async {
-    await tester.pumpWidget(const ProviderScope(
-      child: MaterialApp(home: HomeShell()),
-    ).withTheme());
-    // Profile tab exists and is reachable
+  testWidgets('shows dock and switches to the Profile tab', (tester) async {
+    final client = MockSupabaseClient();
+    final auth = MockGoTrueClient();
+    final friendRepo = MockFriendRepository();
+    final groupRepo = MockGroupRepository();
+    when(() => client.auth).thenReturn(auth);
+    when(() => auth.currentUser).thenReturn(User(
+      id: 'test-user-id', appMetadata: const {}, userMetadata: const {},
+      aud: 'authenticated', createdAt: '2026-07-27T00:00:00Z'));
+    when(() => friendRepo.watchFriendships()).thenAnswer((_) => Stream.value([]));
+    when(() => friendRepo.getMyProfile()).thenAnswer((_) async => null);
+    when(() => groupRepo.watchMyGroups()).thenAnswer((_) => Stream.value([]));
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        supabaseClientProvider.overrideWithValue(client),
+        friendRepositoryProvider.overrideWithValue(friendRepo),
+        groupRepositoryProvider.overrideWithValue(groupRepo),
+      ],
+      child: const MaterialApp(theme: null, home: HomeShell()),
+    ));
+    await tester.pump();
     await tester.tap(find.byTooltip('Profile'));
     await tester.pump();
     expect(find.byType(HomeShell), findsOneWidget);
   });
 }
-
-extension on Widget {
-  Widget withTheme() => this is MaterialApp ? this : this;
-}
 ```
+
+> The `theme:` in the snippet is written `null` as a marker: replace it with `AppTheme.dark` (import already present). HomeShell hosts provider-backed tab screens, so the overrides above are required. Extend the mock stubs if a tab screen you wired reads additional provider methods.
 
 > Implementer note: the tab screens (Tasks 12-16) must exist before this test compiles. If executing in order, write the four new screens (Tasks 12-15) and the reworked Home (Task 16) FIRST, then return to complete Task 11. The recommended execution order is therefore 12 → 13 → 14 → 15 → 16 → 11.
 
@@ -1271,9 +1302,14 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassScaffold(
-      bottomDock: GlassNavDock(currentIndex: _index, onTap: (i) => setState(() => _index = i)),
-      body: IndexedStack(index: _index, children: _tabs),
+    return Stack(
+      children: [
+        IndexedStack(index: _index, children: _tabs),
+        Positioned(
+          left: 0, right: 0, bottom: 0,
+          child: GlassNavDock(currentIndex: _index, onTap: (i) => setState(() => _index = i)),
+        ),
+      ],
     );
   }
 }
@@ -1310,21 +1346,19 @@ git commit -m "feat: add HomeShell with glass dock and route from RootScreen"
 - [ ] **Step 1: Write the failing test**
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:meowes_app/core/app_theme.dart';
-import 'package:meowes_app/features/friends/friends_screen.dart';
-
-void main() {
-  testWidgets('renders a Friends title', (tester) async {
-    await tester.pumpWidget(const ProviderScope(
-      child: MaterialApp(home: FriendsScreen()),
-    ));
-    await tester.pump();
-    expect(find.text('Friends'), findsWidgets);
-  });
-}
+// Follow the widget-test convention (Global Constraints): mock SupabaseClient
+// + GoTrueClient + FriendRepository as in test/features/home/home_screen_test.dart,
+// stub auth.currentUser and watchFriendships()->Stream.value([]), and pump:
+//
+//   await tester.pumpWidget(ProviderScope(
+//     overrides: [
+//       supabaseClientProvider.overrideWithValue(client),
+//       friendRepositoryProvider.overrideWithValue(friendRepo),
+//     ],
+//     child: const MaterialApp(theme: /* AppTheme.dark */ null, home: FriendsScreen()),
+//   ));
+//   await tester.pump();
+//   expect(find.text('Friends'), findsWidgets);
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1365,18 +1399,19 @@ git commit -m "feat: add FriendsScreen tab"
 - [ ] **Step 1: Write the failing test**
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:meowes_app/features/groups/groups_screen.dart';
-
-void main() {
-  testWidgets('renders a Groups title', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: GroupsScreen())));
-    await tester.pump();
-    expect(find.text('Groups'), findsWidgets);
-  });
-}
+// Follow the widget-test convention (Global Constraints): mock SupabaseClient +
+// GoTrueClient + GroupRepository as in test/features/home/home_screen_test.dart,
+// stub auth.currentUser and watchMyGroups()->Stream.value([]), and pump:
+//
+//   await tester.pumpWidget(ProviderScope(
+//     overrides: [
+//       supabaseClientProvider.overrideWithValue(client),
+//       groupRepositoryProvider.overrideWithValue(groupRepo),
+//     ],
+//     child: const MaterialApp(theme: /* AppTheme.dark */ null, home: GroupsScreen()),
+//   ));
+//   await tester.pump();
+//   expect(find.text('Groups'), findsWidgets);
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1415,18 +1450,13 @@ git commit -m "feat: add GroupsScreen tab"
 - [ ] **Step 1: Write the failing test**
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:meowes_app/features/activity/activity_screen.dart';
-
-void main() {
-  testWidgets('renders an Activity title', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: ActivityScreen())));
-    await tester.pump();
-    expect(find.text('Activity'), findsWidgets);
-  });
-}
+// Follow the widget-test convention (Global Constraints). Mock SupabaseClient +
+// GoTrueClient + whatever activity/notifications provider ActivityScreen reads
+// (inspect notifications_screen.dart first), stub it to an empty stream, override
+// those providers, and pump with MaterialApp(theme: AppTheme.dark, home: ActivityScreen()):
+//
+//   await tester.pump();
+//   expect(find.text('Activity'), findsWidgets);
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1468,16 +1498,37 @@ git commit -m "feat: add ActivityScreen tab"
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/a11y/accessibility.dart';
+import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/repositories/friend_repository.dart';
 import 'package:meowes_app/features/profile/profile_screen.dart';
+
+class MockSupabaseClient extends Mock implements SupabaseClient {}
+class MockGoTrueClient extends Mock implements GoTrueClient {}
+class MockFriendRepository extends Mock implements FriendRepository {}
 
 void main() {
   testWidgets('reduce-transparency switch flips the provider', (tester) async {
-    final container = ProviderContainer();
+    final client = MockSupabaseClient();
+    final auth = MockGoTrueClient();
+    final friendRepo = MockFriendRepository();
+    when(() => client.auth).thenReturn(auth);
+    when(() => auth.currentUser).thenReturn(User(
+      id: 'test-user-id', appMetadata: const {}, userMetadata: const {},
+      aud: 'authenticated', createdAt: '2026-07-27T00:00:00Z'));
+    when(() => friendRepo.getMyProfile()).thenAnswer((_) async => null);
+
+    final container = ProviderContainer(overrides: [
+      supabaseClientProvider.overrideWithValue(client),
+      friendRepositoryProvider.overrideWithValue(friendRepo),
+    ]);
     addTearDown(container.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: ProfileScreen()),
+      child: MaterialApp(theme: AppTheme.dark, home: const ProfileScreen()),
     ));
     await tester.pump();
     await tester.tap(find.byType(Switch).first);
@@ -1523,20 +1574,16 @@ git commit -m "feat: add ProfileScreen with reduce-transparency toggle"
 - [ ] **Step 1: Write the failing test**
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:meowes_app/features/home/home_screen.dart';
-
-void main() {
-  testWidgets('home overview no longer renders a Groups section header', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: HomeScreen())));
-    await tester.pump();
-    // Groups list moved to its own tab; overview should not show the old "Groups" section.
-    expect(find.widgetWithText(Column, 'Groups'), findsNothing);
-  });
-}
+// Follow the widget-test convention (Global Constraints) and the existing
+// test/features/home/home_screen_test.dart setup verbatim (mock client + friend
+// + group repos, override the three providers, MaterialApp(theme: AppTheme.dark,
+// home: HomeScreen())). Then assert the Groups section is gone from the overview:
+//
+//   await tester.pump();
+//   expect(find.text('Groups'), findsNothing); // Groups list moved to its own tab
 ```
+
+> Note: update the existing `test/features/home/home_screen_test.dart` too — its current assertion `expect(find.text('Groups'), findsOneWidget)` becomes false once Home is an overview. Change that test to assert the overview content (greeting + balance hero) instead, so the suite stays green.
 
 - [ ] **Step 2: Run test to verify it fails**
 
