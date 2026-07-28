@@ -57,7 +57,7 @@ class GlassSurface extends ConsumerWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [t.glassSheen, Colors.transparent],
-              stops: const [0.0, 0.45],
+              stops: const [0.0, 0.18],
             ),
           ),
           child: child,

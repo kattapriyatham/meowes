@@ -1,8 +1,8 @@
 // lib/features/expenses/add_expense_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
 import 'package:meowes_app/models/app_user.dart';
@@ -145,176 +145,181 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(expenseRepositoryProvider);
+    final t = Theme.of(context).extension<GlassTokens>()!;
     _me = ref.watch(supabaseClientProvider).auth.currentUser!.id;
     final isEditing = widget.editing != null;
 
     if (widget.participantIds.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: Text(isEditing ? 'Edit expense' : 'Add expense')),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'No participants to split this expense with yet.',
-              textAlign: TextAlign.center,
+      return GlassScaffold(
+        appBar: GlassAppBar(title: isEditing ? 'Edit expense' : 'Add expense'),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'No participants to split this expense with yet.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: t.textSecondary),
+              ),
             ),
           ),
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Edit expense' : 'Add expense')),
-      body: FutureBuilder<List<AppUser>>(
-        future: _profilesFuture,
-        builder: (context, snapshot) {
-          final names = {for (final p in snapshot.data ?? <AppUser>[]) p.id: p.name};
-          String nameOf(String id) => id == _me ? 'Me' : (names[id] ?? '...');
+    return GlassScaffold(
+      appBar: GlassAppBar(title: isEditing ? 'Edit expense' : 'Add expense'),
+      body: SafeArea(
+        child: FutureBuilder<List<AppUser>>(
+          future: _profilesFuture,
+          builder: (context, snapshot) {
+            final names = {for (final p in snapshot.data ?? <AppUser>[]) p.id: p.name};
+            String nameOf(String id) => id == _me ? 'Me' : (names[id] ?? '...');
 
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _amountController,
-                decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 20),
-              if (!isEditing) ...[
-                const SectionHeader(title: 'Paid by'),
-                const SizedBox(height: 8),
-                for (final id in widget.participantIds)
-                  RadioListTile<String>(
-                    value: id,
-                    groupValue: _paidBy,
-                    onChanged: (v) => setState(() => _paidBy = v!),
-                    title: Text(nameOf(id)),
-                    activeColor: AppColors.coral,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                const SizedBox(height: 12),
-              ],
-              const SectionHeader(title: 'Split between'),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
+            return ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                TextField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _amountController,
+                  decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 20),
+                if (!isEditing) ...[
+                  const SectionHeader(title: 'Paid by'),
+                  const SizedBox(height: 8),
                   for (final id in widget.participantIds)
-                    Chip(
-                      avatar: AppAvatar(seed: id, label: nameOf(id), size: 24),
-                      label: Text(nameOf(id)),
-                      backgroundColor: Colors.white,
+                    RadioListTile<String>(
+                      value: id,
+                      groupValue: _paidBy,
+                      onChanged: (v) => setState(() => _paidBy = v!),
+                      title: Text(nameOf(id), style: TextStyle(color: t.textPrimary)),
+                      activeColor: t.brandSolid,
+                      contentPadding: EdgeInsets.zero,
                     ),
+                  const SizedBox(height: 12),
                 ],
-              ),
-              const SizedBox(height: 20),
-              const SectionHeader(title: 'Split type'),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _SplitTypeTile(
-                      label: 'Equal',
-                      icon: Icons.balance,
-                      color: AppColors.avatarPalette[4],
-                      selected: _splitType == SplitType.equal,
-                      onTap: () => setState(() => _splitType = SplitType.equal),
+                const SectionHeader(title: 'Split between'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final id in widget.participantIds)
+                      Chip(
+                        avatar: AppAvatar(seed: id, label: nameOf(id), size: 24),
+                        label: Text(nameOf(id), style: TextStyle(color: t.textPrimary)),
+                        backgroundColor: t.cardColor,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const SectionHeader(title: 'Split type'),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SplitTypeTile(
+                        label: 'Equal',
+                        icon: Icons.balance,
+                        selected: _splitType == SplitType.equal,
+                        onTap: () => setState(() => _splitType = SplitType.equal),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _SplitTypeTile(
-                      label: 'Percentage',
-                      icon: Icons.percent,
-                      color: AppColors.avatarPalette[1],
-                      selected: _splitType == SplitType.percentage,
-                      onTap: () => setState(() => _splitType = SplitType.percentage),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _SplitTypeTile(
+                        label: 'Percentage',
+                        icon: Icons.percent,
+                        selected: _splitType == SplitType.percentage,
+                        onTap: () => setState(() => _splitType = SplitType.percentage),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _SplitTypeTile(
-                      label: 'Exact',
-                      icon: Icons.tune,
-                      color: AppColors.avatarPalette[3],
-                      selected: _splitType == SplitType.exact,
-                      onTap: () => setState(() => _splitType = SplitType.exact),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _SplitTypeTile(
+                        label: 'Exact',
+                        icon: Icons.tune,
+                        selected: _splitType == SplitType.exact,
+                        onTap: () => setState(() => _splitType = SplitType.exact),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              if (_splitType == SplitType.percentage) ...[
-                for (final id in widget.participantIds)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(nameOf(id))),
-                        SizedBox(
-                          width: 90,
-                          child: TextField(
-                            controller: _percentControllers[id],
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(suffixText: '%'),
-                            onChanged: (_) => setState(() {}),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                if (_splitType == SplitType.percentage) ...[
+                  for (final id in widget.participantIds)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Expanded(child: Text(nameOf(id), style: TextStyle(color: t.textPrimary))),
+                          SizedBox(
+                            width: 90,
+                            child: TextField(
+                              controller: _percentControllers[id],
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(suffixText: '%'),
+                              onChanged: (_) => setState(() {}),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ),
+                  Text(
+                    'Total: ${_percentTotal.toStringAsFixed(1)}% (needs to be 100%)',
+                    style: TextStyle(
+                      color: (_percentTotal - 100).abs() < 0.01 ? t.positive : t.negative,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                Text(
-                  'Total: ${_percentTotal.toStringAsFixed(1)}% (needs to be 100%)',
-                  style: TextStyle(
-                    color: (_percentTotal - 100).abs() < 0.01 ? AppColors.owedText : AppColors.owingText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              if (_splitType == SplitType.exact) ...[
-                for (final id in widget.participantIds)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(child: Text(nameOf(id))),
-                            Text('₹${(_exactAmounts[id] ?? 0).toStringAsFixed(2)}'),
-                          ],
-                        ),
-                        Slider(
-                          value: (_exactAmounts[id] ?? 0).clamp(0, _totalAmount == 0 ? 1 : _totalAmount),
-                          min: 0,
-                          max: _totalAmount == 0 ? 1 : _totalAmount,
-                          activeColor: AppColors.coral,
-                          onChanged: _totalAmount == 0
-                              ? null
-                              : (v) => setState(() => _exactAmounts[id] = v),
-                        ),
-                      ],
+                ],
+                if (_splitType == SplitType.exact) ...[
+                  for (final id in widget.participantIds)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: Text(nameOf(id), style: TextStyle(color: t.textPrimary))),
+                              Text(
+                                '₹${(_exactAmounts[id] ?? 0).toStringAsFixed(2)}',
+                                style: TextStyle(color: t.textPrimary),
+                              ),
+                            ],
+                          ),
+                          Slider(
+                            value: (_exactAmounts[id] ?? 0).clamp(0, _totalAmount == 0 ? 1 : _totalAmount),
+                            min: 0,
+                            max: _totalAmount == 0 ? 1 : _totalAmount,
+                            activeColor: t.brandSolid,
+                            onChanged: _totalAmount == 0
+                                ? null
+                                : (v) => setState(() => _exactAmounts[id] = v),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Text(
+                    'Remaining: ₹${(_totalAmount - _exactTotal).toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: (_totalAmount - _exactTotal).abs() < 0.01 ? t.positive : t.negative,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                Text(
-                  'Remaining: ₹${(_totalAmount - _exactTotal).toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: (_totalAmount - _exactTotal).abs() < 0.01 ? AppColors.owedText : AppColors.owingText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _canSave
+                ],
+                const SizedBox(height: 24),
+                PillButton(
+                  label: isEditing ? 'Save Changes' : 'Save Expense',
+                  primary: true,
+                  onTap: _canSave
                       ? () async {
                           final amountMinorUnits = (_totalAmount * 100).round();
                           final percentages = _splitType == SplitType.percentage
@@ -352,12 +357,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           if (context.mounted) Navigator.of(context).pop();
                         }
                       : null,
-                  child: Text(isEditing ? 'Save Changes' : 'Save Expense'),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -366,34 +370,34 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 class _SplitTypeTile extends StatelessWidget {
   final String label;
   final IconData icon;
-  final Color color;
   final bool selected;
   final VoidCallback onTap;
 
   const _SplitTypeTile({
     required this.label,
     required this.icon,
-    required this.color,
     required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    final fg = selected ? t.onBrand : t.textPrimary;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.18),
+          color: selected ? t.brandSolid : t.cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? color : Colors.transparent, width: 2),
+          border: Border.all(color: selected ? t.brandSolid : t.glassBorder, width: 2),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color),
+            Icon(icon, color: fg),
             const SizedBox(height: 6),
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
+            Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 12)),
           ],
         ),
       ),

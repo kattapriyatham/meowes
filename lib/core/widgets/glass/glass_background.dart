@@ -19,13 +19,15 @@ class GlassBackground extends StatelessWidget {
       ),
       child: Stack(
         children: [
+          // Both blobs sit in the upper ~40% so the frosted panels (app bar,
+          // hero, cards) have real color behind them to refract.
           Positioned(
-            top: -40, right: -30,
-            child: _Blob(color: t.blobIndigo, size: 240),
+            top: -50, right: -60,
+            child: _Blob(color: t.blobIndigo, size: 280),
           ),
           Positioned(
-            bottom: 80, left: -50,
-            child: _Blob(color: t.blobTeal, size: 220),
+            top: 240, left: -80,
+            child: _Blob(color: t.blobTeal, size: 260),
           ),
           Positioned.fill(child: child),
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meowes_app/core/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:meowes_app/features/expenses/expense_detail_screen.dart';
@@ -35,7 +36,7 @@ void main() {
           expenseRepositoryProvider.overrideWithValue(mockExpenseRepo),
           friendRepositoryProvider.overrideWithValue(mockFriendRepo),
         ],
-        child: MaterialApp(home: ExpenseDetailScreen(expense: expense)),
+        child: MaterialApp(theme: AppTheme.light, home: ExpenseDetailScreen(expense: expense)),
       ),
     );
     await tester.pump();
@@ -70,7 +71,7 @@ void main() {
           expenseRepositoryProvider.overrideWithValue(mockExpenseRepo),
           friendRepositoryProvider.overrideWithValue(mockFriendRepo),
         ],
-        child: MaterialApp(home: ExpenseDetailScreen(expense: expense)),
+        child: MaterialApp(theme: AppTheme.light, home: ExpenseDetailScreen(expense: expense)),
       ),
     );
     await tester.pump();

@@ -64,7 +64,7 @@ void main() {
     expect(find.text('Friends'), findsNothing);
 
     // Overview content: greeting, balance hero, primary actions.
-    expect(find.text('Hi there!'), findsOneWidget);
+    expect(find.text('Hi there'), findsOneWidget);
     expect(find.text('Add expense'), findsOneWidget);
     expect(find.text('Settle up'), findsOneWidget);
   });

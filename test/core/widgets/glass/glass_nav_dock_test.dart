@@ -13,7 +13,9 @@ void main() {
         home: Scaffold(body: GlassNavDock(currentIndex: 0, onTap: (i) => idx = i)),
       ),
     ));
-    expect(find.byType(IconButton), findsNWidgets(5));
+    expect(find.byType(Tooltip), findsNWidgets(5));
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Profile'), findsOneWidget);
     await tester.tap(find.byTooltip('Groups'));
     expect(idx, 2);
   });

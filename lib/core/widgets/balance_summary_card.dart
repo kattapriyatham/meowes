@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:meowes_app/core/app_theme.dart';
+import 'package:meowes_app/core/theme/app_typography.dart';
+import 'package:meowes_app/core/theme/glass_tokens.dart';
+import 'package:meowes_app/core/widgets/soft_card.dart';
 
-/// Full-width tinted card: "You are owed"/"You owe"/"All settled up" plus
-/// the amount. Used for Home's overall summary and Friend Detail's balance.
+/// Full-width balance summary: "You are owed"/"You owe"/"All settled up" plus
+/// the amount, in the paper (SoftCard) style with token colors.
 class BalanceSummaryCard extends StatelessWidget {
   final double balance;
   final bool loading;
@@ -17,34 +19,24 @@ class BalanceSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
     final isOwed = balance > 0.005;
     final isOwing = balance < -0.005;
-    final bg = isOwed ? AppColors.owedBg : (isOwing ? AppColors.owingBg : AppColors.settledBg);
-    final fg = isOwed ? AppColors.owedText : (isOwing ? AppColors.owingText : AppColors.settledText);
+    final color = isOwed ? t.positive : (isOwing ? t.negative : t.settled);
     final label = isOwed ? 'You are owed' : (isOwing ? 'You owe' : settledMessage);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(22)),
+    return SoftCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 15)),
-          const SizedBox(height: 6),
+          Text(label, style: TextStyle(color: t.textSecondary, fontWeight: FontWeight.w500, fontSize: 14)),
+          const SizedBox(height: 8),
           if (loading)
-            SizedBox(
-              height: 30,
-              width: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: fg),
-            )
+            const SizedBox(height: 30, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
           else if (!isOwed && !isOwing)
-            const Text('🐾', style: TextStyle(fontSize: 26))
+            Text(settledMessage, style: TextStyle(color: t.settled, fontSize: 18, fontWeight: FontWeight.w700))
           else
-            Text(
-              '₹${balance.abs().toStringAsFixed(2)}',
-              style: TextStyle(color: fg, fontSize: 30, fontWeight: FontWeight.w800),
-            ),
+            Text('₹${balance.abs().toStringAsFixed(2)}', style: moneyStyle(color, size: 32)),
         ],
       ),
     );

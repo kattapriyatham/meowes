@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/models/group.dart';
 import 'package:meowes_app/repositories/group_repository.dart';
@@ -45,104 +45,114 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(groupRepositoryProvider);
+    final t = Theme.of(context).extension<GlassTokens>()!;
 
     if (_created != null) {
       final group = _created!;
-      return Scaffold(
-        appBar: AppBar(title: const Text('Group created')),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(group.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 20),
-              const SectionHeader(title: 'Invite code'),
-              const SizedBox(height: 12),
-              AppCard(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        group.inviteCode,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 1.2),
+      return GlassScaffold(
+        appBar: const GlassAppBar(title: 'Group created'),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(group.name, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: t.textPrimary)),
+                const SizedBox(height: 20),
+                const SectionHeader(title: 'Invite code'),
+                const SizedBox(height: 12),
+                SoftCard(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          group.inviteCode,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                            color: t.textPrimary,
+                          ),
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, color: AppColors.coral),
-                      onPressed: () => Clipboard.setData(ClipboardData(text: group.inviteCode)),
-                    ),
-                  ],
+                      SoftIconButton(
+                        icon: Icons.copy,
+                        onTap: () => Clipboard.setData(ClipboardData(text: group.inviteCode)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(group),
-                  child: const Text('Done'),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  child: PillButton(
+                    label: 'Done',
+                    onTap: () => Navigator.of(context).pop(group),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create group')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _ModeTab(
-                    label: 'Create',
-                    selected: !_isJoinMode,
-                    onTap: () => setState(() => _isJoinMode = false),
+    return GlassScaffold(
+      appBar: const GlassAppBar(title: 'Create group'),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _ModeTab(
+                      label: 'Create',
+                      selected: !_isJoinMode,
+                      onTap: () => setState(() => _isJoinMode = false),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ModeTab(
+                      label: 'Join',
+                      selected: _isJoinMode,
+                      onTap: () => setState(() => _isJoinMode = true),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (_isJoinMode) ...[
+                TextField(
+                  controller: _codeController,
+                  decoration: const InputDecoration(labelText: 'Invite code'),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: PillButton(
+                    label: 'Join',
+                    onTap: () => _handleJoin(repo),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ModeTab(
-                    label: 'Join',
-                    selected: _isJoinMode,
-                    onTap: () => setState(() => _isJoinMode = true),
+              ] else ...[
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Group name'),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: PillButton(
+                    label: 'Create',
+                    onTap: () => _handleCreate(repo),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 20),
-            if (_isJoinMode) ...[
-              TextField(
-                controller: _codeController,
-                decoration: const InputDecoration(labelText: 'Invite code'),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _handleJoin(repo),
-                  child: const Text('Join'),
-                ),
-              ),
-            ] else ...[
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Group name'),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _handleCreate(repo),
-                  child: const Text('Create'),
-                ),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -157,19 +167,20 @@ class _ModeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? AppColors.coral : Colors.white,
+          color: selected ? t.brandSolid : t.cardColor,
           borderRadius: BorderRadius.circular(14),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.textDark,
+            color: selected ? t.onBrand : t.textPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),
