@@ -13,6 +13,15 @@ import 'package:meowes_app/models/app_user.dart';
 // shared friendRepositoryProvider.
 export 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
 
+/// Caches the current user's own profile fetch. autoDispose so it doesn't
+/// linger once ProfileScreen is popped, but — unlike calling
+/// `getMyProfile()` inline in `build()` — a rebuild of ProfileScreen (e.g.
+/// from toggling reduceTransparencyProvider) reuses the cached result
+/// instead of re-running the fetch and flashing the skeleton loader again.
+final myProfileProvider = FutureProvider.autoDispose<AppUser?>(
+  (ref) => ref.watch(friendRepositoryProvider).getMyProfile(),
+);
+
 /// Profile tab: glass header with avatar/name, a settings card (currently
 /// just the reduce-transparency accessibility toggle), and a sign-out
 /// action.
@@ -22,8 +31,8 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final client = ref.watch(supabaseClientProvider);
-    final friendRepo = ref.watch(friendRepositoryProvider);
     final me = client.auth.currentUser!.id;
+    final profileAsync = ref.watch(myProfileProvider);
 
     return GlassScaffold(
       appBar: const GlassAppBar(title: 'Profile'),
@@ -31,13 +40,10 @@ class ProfileScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
           children: [
-            FutureBuilder<AppUser?>(
-              future: friendRepo.getMyProfile(),
-              builder: (context, snapshot) {
-                final loading = snapshot.connectionState == ConnectionState.waiting;
-                final name = snapshot.data?.name;
-                return _ProfileHeader(me: me, name: name, loading: loading);
-              },
+            _ProfileHeader(
+              me: me,
+              name: profileAsync.asData?.value?.name,
+              loading: profileAsync.isLoading,
             ),
             const SizedBox(height: 16),
             GlassCard(
