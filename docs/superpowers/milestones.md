@@ -16,22 +16,28 @@ settle-up confirmation, and the screens tying it together.
 - Plan: `docs/superpowers/plans/2026-07-27-core-expense-splitting.md`
 - Known gaps / follow-ups: `docs/superpowers/known-issues.md`
 
-## 2. Pet / coin / mood companion system — Not started
+## 2. Pet / coin / mood companion system — Design revised, not started
 
-The actual product differentiator. Per the original brief:
+The actual product differentiator. Original brief tied coin-earning to
+expense logging and mood to unpaid balances; both were reworked during
+brainstorming (rewarding expense logging isn't a virtue, and tying mood to
+debt status turned the pet into a guilt trip). Current design:
 
 - One personal pet per user, follows them across all groups (no shared pet).
-- Coin earning: add an expense (+1), settle a balance in full (+3), settle
-  within 24h of being asked (+1 bonus + mood up), log an expense same-day
-  (mood up), reach zero balance across all groups (celebration), group fully
-  settles together (one-time bonus for everyone), streak of no overdue
-  balance (small multiplier).
-- Mood system (visual only, no coin penalties): unpaid balance 7+ days (mood
-  down), 3+ expenses logged in a backlog dump (mood dip + nudge), owed money
-  with no settle-up request for 2+ weeks (mild dip).
-- Coin spending: cosmetic skins/decor/backgrounds only, never gameplay-
-  affecting, never purchasable with real money.
-- Open question from the brief: exact mood decay/recovery curve.
+- Coin earning: daily check-in (+5), feed (+2 per feed, once per 3h), feed
+  streak of 7 consecutive days (+10 bonus), settle a balance in full (+20).
+  Never earned by logging expenses.
+- Mood (visual only, decoupled from money/debts entirely): reflects
+  feeding/petting engagement cadence, not balances or settle-up promptness.
+- Coin spending: deferred — cosmetics needing new art per combination are
+  hard to implement with a single static cat image; candidates include
+  color-tint filters, background themes, props beside the cat, and
+  non-visual sinks (nicknames, streak-savers, badges).
+- Monetization: Pro unlocks an exclusive cosmetics catalog only.
+- Open questions: exact mood decay/recovery curve, what coins actually buy,
+  whether petting needs a frequency limit.
+
+- Spec: `docs/superpowers/specs/2026-07-29-pet-coin-mood-companion-design.md`
 
 ## 3. UPI-native settle-up — Not started
 
