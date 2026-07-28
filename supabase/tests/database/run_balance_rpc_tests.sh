@@ -269,5 +269,24 @@ else
   fail_count=$((fail_count + 1))
 fi
 
+# A direct-expense participant must see ALL of that expense's splits, not
+# just their own row (expense_splits_select_participant via has_expense_split).
+# EXPENSE1 is a direct expense Alex paid, split Alex/Sam; as Sam (the
+# non-payer) both split rows must be visible or ExpenseDetailScreen shows an
+# incomplete "Split between".
+splits_json=$(supabase db query --linked --output-format json "
+  set local role authenticated;
+  set local request.jwt.claim.sub = '$SAM';
+  select count(*)::int as visible from expense_splits where expense_id = '$EXPENSE1';
+" 2>/dev/null || true)
+splits_visible=$(echo "$splits_json" | jq -r '.rows[0].visible // "null"')
+if [[ "$splits_visible" == "2" ]]; then
+  echo "ok - a direct-expense participant (non-payer) can see all splits"
+  pass_count=$((pass_count + 1))
+else
+  echo "not ok - direct-expense split visibility for non-payer (visible: $splits_visible of 2)"
+  fail_count=$((fail_count + 1))
+fi
+
 echo "$pass_count passed, $fail_count failed"
 [[ "$fail_count" -eq 0 ]]
