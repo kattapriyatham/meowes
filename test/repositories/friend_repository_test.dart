@@ -61,6 +61,21 @@ class _FakeInsertResult extends Fake
   }
 }
 
+class _FakeFilterChain extends Fake implements PostgrestFilterBuilder<PostgrestList> {
+  final List<MapEntry<String, dynamic>> eqCalls = [];
+
+  @override
+  PostgrestFilterBuilder<PostgrestList> eq(String column, Object value) {
+    eqCalls.add(MapEntry(column, value));
+    return this;
+  }
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestList) onValue, {Function? onError}) {
+    return Future.value(<Map<String, dynamic>>[]).then(onValue, onError: onError);
+  }
+}
+
 void main() {
   test('sendFriendRequest inserts a pending friendship with ordered user ids', () async {
     final client = MockSupabaseClient();
@@ -91,5 +106,34 @@ void main() {
     expect(captured['user_id_b'], 'bbbbbbbb-0000-0000-0000-000000000000');
     expect(captured['status'], 'pending');
     expect(captured['requested_by'], 'bbbbbbbb-0000-0000-0000-000000000000');
+  });
+
+  test('declineFriendRequest deletes the friendship row with ordered user ids', () async {
+    final client = MockSupabaseClient();
+    final auth = MockGoTrueClient();
+    final table = MockQueryBuilder();
+    final deleteChain = _FakeFilterChain();
+
+    when(() => client.auth).thenReturn(auth);
+    when(() => auth.currentUser).thenReturn(
+      User(
+        id: 'bbbbbbbb-0000-0000-0000-000000000000',
+        appMetadata: const {},
+        userMetadata: const {},
+        aud: 'authenticated',
+        createdAt: '2026-07-27T00:00:00Z',
+      ),
+    );
+    when(() => client.from('friendships')).thenAnswer((_) => table);
+    when(() => table.delete()).thenAnswer((_) => deleteChain);
+
+    final repo = FriendRepository(client);
+    await repo.declineFriendRequest('aaaaaaaa-0000-0000-0000-000000000000');
+
+    expect(deleteChain.eqCalls.length, 2);
+    expect(deleteChain.eqCalls[0].key, 'user_id_a');
+    expect(deleteChain.eqCalls[0].value, 'aaaaaaaa-0000-0000-0000-000000000000');
+    expect(deleteChain.eqCalls[1].key, 'user_id_b');
+    expect(deleteChain.eqCalls[1].value, 'bbbbbbbb-0000-0000-0000-000000000000');
   });
 }

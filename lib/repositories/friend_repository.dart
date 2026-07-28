@@ -55,6 +55,17 @@ class FriendRepository {
         .eq('user_id_b', userIdB);
   }
 
+  Future<void> declineFriendRequest(String fromUserId) async {
+    final me = _client.auth.currentUser!.id;
+    final userIdA = me.compareTo(fromUserId) < 0 ? me : fromUserId;
+    final userIdB = me.compareTo(fromUserId) < 0 ? fromUserId : me;
+    await _client
+        .from('friendships')
+        .delete()
+        .eq('user_id_a', userIdA)
+        .eq('user_id_b', userIdB);
+  }
+
   Stream<List<Friendship>> watchFriendships() {
     final me = _client.auth.currentUser!.id;
     return _client
