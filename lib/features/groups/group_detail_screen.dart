@@ -1,8 +1,9 @@
 // lib/features/groups/group_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/core/theme/app_typography.dart';
+import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/expenses/add_expense_screen.dart';
 import 'package:meowes_app/features/expenses/expense_detail_screen.dart';
@@ -51,121 +52,177 @@ class GroupDetailScreen extends ConsumerWidget {
         // Current user first so the Add-expense payer defaults to "me".
         final participantIds = [me, ...data.memberIds.where((id) => id != me)];
 
-        return Scaffold(
-          appBar: AppBar(title: const Text('Group')),
-          floatingActionButton: data.memberIds.isEmpty
-              ? null
-              : FloatingActionButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AddExpenseScreen(
-                        groupId: groupId,
-                        participantIds: participantIds,
-                      ),
+        return GlassScaffold(
+          appBar: const GlassAppBar(title: 'Group'),
+          body: SafeArea(
+            child: Stack(
+              children: [
+                ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+                  children: [
+                    AvatarStack(
+                      seeds: data.memberIds,
+                      labels: [for (final id in data.memberIds) nameOf(id)],
                     ),
-                  ),
-                  child: const Icon(Icons.add),
-                ),
-          body: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              AvatarStack(
-                seeds: data.memberIds,
-                labels: [for (final id in data.memberIds) nameOf(id)],
-              ),
-              const SizedBox(height: 20),
-              const SectionHeader(title: 'Expenses'),
-              const SizedBox(height: 12),
-              StreamBuilder<List<Expense>>(
-                stream: expenseRepo.watchExpenses(groupId: groupId),
-                builder: (context, expenseSnapshot) {
-                  final expenses = expenseSnapshot.data ?? [];
-                  if (expenses.isEmpty) {
-                    return const EmptyStateBox(
-                      icon: Icons.receipt_long_outlined,
-                      message: 'No expenses logged in this group yet.',
-                    );
-                  }
-                  return Column(
-                    children: [
-                      for (final e in expenses) ...[
-                        AppCard(
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => ExpenseDetailScreen(expense: e)),
-                          ),
-                          child: Row(
+                    const SizedBox(height: 20),
+                    const SectionHeader(title: 'Expenses'),
+                    const SizedBox(height: 12),
+                    StreamBuilder<List<Expense>>(
+                      stream: expenseRepo.watchExpenses(groupId: groupId),
+                      builder: (context, expenseSnapshot) {
+                        final expenses = expenseSnapshot.data ?? [];
+                        if (expenses.isEmpty) {
+                          return const EmptyStateBox(
+                            icon: Icons.receipt_long_outlined,
+                            message: 'No expenses logged in this group yet.',
+                          );
+                        }
+                        return SoftCard(
+                          padding: EdgeInsets.zero,
+                          child: Column(
                             children: [
-                              Expanded(
-                                child: Text(
-                                  e.description,
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                ),
-                              ),
-                              Text(
-                                '₹${(e.amountMinorUnits / 100).toStringAsFixed(2)}',
-                                style: const TextStyle(fontWeight: FontWeight.w700),
-                              ),
+                              for (var i = 0; i < expenses.length; i++) ...[
+                                if (i > 0) const Divider(height: 1),
+                                _ExpenseRow(expense: expenses[i]),
+                              ],
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              const SectionHeader(title: 'Smart settle suggestions'),
-              const SizedBox(height: 12),
-              if (data.debts.isEmpty)
-                const EmptyStateBox(
-                  icon: Icons.celebration_outlined,
-                  message: 'Everyone is settled up.',
-                )
-              else
-                Column(
-                  children: [
-                    for (final d in data.debts) ...[
-                      AppCard(
-                        // markPaid always records from_user = me, so only the
-                        // actual debtor's own row should be tappable into
-                        // settle-up — otherwise a member could record a
-                        // settlement in their own name for someone else's debt.
-                        onTap: d['from_user'] == me
-                            ? () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => SettleUpScreen(
-                                      toUser: d['to_user'] as String,
-                                      amountMinorUnits:
-                                          (double.parse(d['amount'].toString()) * 100).round(),
-                                      groupId: groupId,
-                                    ),
-                                  ),
-                                )
-                            : null,
-                        child: Row(
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    const SectionHeader(title: 'Smart settle suggestions'),
+                    const SizedBox(height: 12),
+                    if (data.debts.isEmpty)
+                      const EmptyStateBox(
+                        icon: Icons.celebration_outlined,
+                        message: 'Everyone is settled up.',
+                      )
+                    else
+                      SoftCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: Text(
-                                '${nameOf(d['from_user'] as String)} owes ${nameOf(d['to_user'] as String)}',
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            for (var i = 0; i < data.debts.length; i++) ...[
+                              if (i > 0) const Divider(height: 1),
+                              _DebtRow(
+                                debt: data.debts[i],
+                                me: me,
+                                groupId: groupId,
+                                nameOf: nameOf,
                               ),
-                            ),
-                            Text(
-                              '₹${double.parse(d['amount'].toString()).toStringAsFixed(2)}',
-                              style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.owingText),
-                            ),
+                            ],
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
-                    ],
                   ],
                 ),
-            ],
+                if (data.memberIds.isNotEmpty)
+                  Positioned(
+                    right: 0,
+                    bottom: 16,
+                    child: FloatingActionButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AddExpenseScreen(
+                            groupId: groupId,
+                            participantIds: participantIds,
+                          ),
+                        ),
+                      ),
+                      child: const Icon(Icons.add),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+class _ExpenseRow extends StatelessWidget {
+  final Expense expense;
+  const _ExpenseRow({required this.expense});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ExpenseDetailScreen(expense: expense)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  expense.description,
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: t.textPrimary),
+                ),
+              ),
+              Text(
+                '₹${(expense.amountMinorUnits / 100).toStringAsFixed(2)}',
+                style: moneyStyle(t.textPrimary, size: 14).copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DebtRow extends StatelessWidget {
+  final dynamic debt;
+  final String me;
+  final String groupId;
+  final String Function(String) nameOf;
+  const _DebtRow({required this.debt, required this.me, required this.groupId, required this.nameOf});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    // markPaid always records from_user = me, so only the actual debtor's
+    // own row should be tappable into settle-up — otherwise a member could
+    // record a settlement in their own name for someone else's debt.
+    final onTap = debt['from_user'] == me
+        ? () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SettleUpScreen(
+                  toUser: debt['to_user'] as String,
+                  amountMinorUnits: (double.parse(debt['amount'].toString()) * 100).round(),
+                  groupId: groupId,
+                ),
+              ),
+            )
+        : null;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${nameOf(debt['from_user'] as String)} owes ${nameOf(debt['to_user'] as String)}',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: t.textPrimary),
+                ),
+              ),
+              Text(
+                '₹${double.parse(debt['amount'].toString()).toStringAsFixed(2)}',
+                style: moneyStyle(t.negative, size: 14).copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

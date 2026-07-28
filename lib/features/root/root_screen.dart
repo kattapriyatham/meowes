@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/auth/profile_setup_screen.dart';
 import 'package:meowes_app/features/auth/sign_in_screen.dart';
 import 'package:meowes_app/features/root/home_shell.dart';
@@ -23,7 +24,7 @@ class RootScreen extends ConsumerWidget {
       future: client.from('users').select().eq('id', user.id).maybeSingle(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const GlassScaffold(body: Center(child: CircularProgressIndicator()));
         }
         return snapshot.data == null
             ? const ProfileSetupScreen()
