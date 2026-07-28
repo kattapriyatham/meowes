@@ -35,25 +35,15 @@ class HomeScreen extends ConsumerWidget {
       future: friendRepo.getMyProfile(),
       builder: (context, profileSnapshot) {
         final name = profileSnapshot.data?.name;
-        final greeting = name != null ? 'Hi $name!' : 'Hi there!';
+        final greeting = name != null ? 'Hi, $name' : 'Hi there';
 
         return GlassScaffold(
-          appBar: GlassAppBar(
-            title: greeting,
-            actions: [
-              IconButton(
-                tooltip: 'Notifications',
-                icon: const Icon(Icons.notifications_none),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                ),
-              ),
-            ],
-          ),
           body: SafeArea(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
               children: [
+                _Header(greeting: greeting),
+                const SizedBox(height: 20),
                 StreamBuilder<List<Friendship>>(
                   stream: friendRepo.watchFriendships(),
                   builder: (context, snapshot) {
@@ -205,51 +195,15 @@ class _OverviewBody extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _BalanceHero(balance: data?.net ?? 0, loading: loading),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatTile(
-                    label: "You're owed",
-                    amount: data?.owed ?? 0,
-                    positive: true,
-                    loading: loading,
-                  ),
+            _OverallCard(
+              balance: data?.net ?? 0,
+              loading: loading,
+              onAdd: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AddExpenseScreen(participantIds: [me, ...friendIds]),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatTile(
-                    label: 'You owe',
-                    amount: data?.owe ?? 0,
-                    positive: false,
-                    loading: loading,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: GlassButton(
-                    label: 'Add expense',
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => AddExpenseScreen(participantIds: [me, ...friendIds]),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GlassButton(
-                    label: 'Settle up',
-                    secondary: true,
-                    onPressed: () => _showAddMenu(context),
-                  ),
-                ),
-              ],
+              ),
+              onSettle: () => _showAddMenu(context),
             ),
             const SizedBox(height: 28),
             _BalancesSection(loading: loading, data: data, friendIds: friendIds),
@@ -260,12 +214,19 @@ class _OverviewBody extends StatelessWidget {
   }
 }
 
-/// Full-width overall-balance hero. Space Grotesk money numeral via
-/// [moneyStyle]; color from GlassTokens (green owed / red owe / grey settled).
-class _BalanceHero extends StatelessWidget {
+/// The single "Overall" card: label + big Space Grotesk amount + the two
+/// primary actions (Add expense / Settle up) inside the same glass card.
+class _OverallCard extends StatelessWidget {
   final double balance;
   final bool loading;
-  const _BalanceHero({required this.balance, required this.loading});
+  final VoidCallback onAdd;
+  final VoidCallback onSettle;
+  const _OverallCard({
+    required this.balance,
+    required this.loading,
+    required this.onAdd,
+    required this.onSettle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -274,7 +235,7 @@ class _BalanceHero extends StatelessWidget {
     final isOwing = balance < -0.005;
     final color = isOwed ? t.positive : (isOwing ? t.negative : t.settled);
     final label = isOwed
-        ? 'Overall, you are owed'
+        ? "Overall, you're owed"
         : (isOwing ? 'Overall, you owe' : 'All settled up');
 
     return GlassCard(
@@ -288,48 +249,63 @@ class _BalanceHero extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           if (loading)
-            const SkeletonLoader(height: 42, width: 160)
+            const SkeletonLoader(height: 44, width: 170)
           else
             Text('₹${balance.abs().toStringAsFixed(2)}', style: moneyStyle(color, size: 40)),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(child: GlassButton(label: 'Add expense', onPressed: onAdd)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GlassButton(label: 'Settle up', secondary: true, onPressed: onSettle),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-/// One half of the owed/owe breakdown row.
-class _StatTile extends StatelessWidget {
-  final String label;
-  final double amount;
-  final bool positive;
-  final bool loading;
-  const _StatTile({
-    required this.label,
-    required this.amount,
-    required this.positive,
-    required this.loading,
-  });
+/// Home header: large greeting + a boxed glass notifications button.
+class _Header extends StatelessWidget {
+  final String greeting;
+  const _Header({required this.greeting});
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
-    final color = positive ? t.positive : t.negative;
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(color: t.textMuted, fontSize: 12, fontWeight: FontWeight.w500),
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            greeting,
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(color: t.textPrimary, fontSize: 26, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 6),
-          if (loading)
-            const SkeletonLoader(height: 22, width: 80)
-          else
-            Text('₹${amount.toStringAsFixed(2)}', style: moneyStyle(color, size: 18)),
-        ],
-      ),
+        ),
+        const SizedBox(width: 12),
+        GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          ),
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: GlassSurface(
+              strong: true,
+              radius: 14,
+              padding: EdgeInsets.zero,
+              child: Center(
+                child: Icon(Icons.notifications_none, color: t.textPrimary, size: 22),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

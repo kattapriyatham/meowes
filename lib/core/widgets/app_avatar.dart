@@ -19,11 +19,14 @@ class AppAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Soft pale tint circle with the initial/icon in the strong hue — a
+    // calmer, glass-friendly treatment (was a saturated fill + white glyph).
+    final base = AppColors.avatarFor(seed);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.avatarFor(seed),
+        color: base.withValues(alpha: 0.20),
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
@@ -31,12 +34,12 @@ class AppAvatar extends StatelessWidget {
           ? Text(
               label![0].toUpperCase(),
               style: TextStyle(
-                color: Colors.white,
+                color: base,
                 fontWeight: FontWeight.w700,
                 fontSize: size * 0.4,
               ),
             )
-          : Icon(icon ?? Icons.person, color: Colors.white, size: size * 0.5),
+          : Icon(icon ?? Icons.person, color: base, size: size * 0.5),
     );
   }
 }
