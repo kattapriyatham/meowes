@@ -2,6 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/expense.dart';
+import 'package:meowes_app/models/expense_split.dart';
 import 'package:meowes_app/models/settlement.dart';
 
 void main() {
@@ -82,5 +83,23 @@ void main() {
       'confirmed_at': null,
     });
     expect(settlement.amountMinorUnits, 50000);
+  });
+
+  test('ExpenseSplit fromJson handles share_amount as a numeric JSON value (PostgREST\'s actual wire format for numeric columns, not a string)', () {
+    final split = ExpenseSplit.fromJson({
+      'expense_id': 'e1',
+      'user_id': 'u1',
+      'share_amount': 250.50,
+    });
+    expect(split.shareAmountMinorUnits, 25050);
+  });
+
+  test('ExpenseSplit fromJson still handles share_amount as a string', () {
+    final split = ExpenseSplit.fromJson({
+      'expense_id': 'e1',
+      'user_id': 'u1',
+      'share_amount': '250.50',
+    });
+    expect(split.shareAmountMinorUnits, 25050);
   });
 }
