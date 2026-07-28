@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:meowes_app/models/friend_activity_item.dart';
 import 'package:meowes_app/repositories/expense_repository.dart';
 import 'package:meowes_app/splitting/split_calculator.dart';
 
@@ -68,6 +69,19 @@ class _FakeFilterChain extends Fake implements PostgrestFilterBuilder<PostgrestL
   @override
   Future<U> then<U>(FutureOr<U> Function(PostgrestList) onValue, {Function? onError}) {
     return Future.value(<Map<String, dynamic>>[]).then(onValue, onError: onError);
+  }
+}
+
+// SupabaseClient.rpc returns a PostgrestFilterBuilder (a Future-like
+// builder), not a plain Future — so a Fake with a real then() is needed
+// to stub it, same pattern as the insert/select fakes above.
+class _FakeRpcResult extends Fake implements PostgrestFilterBuilder<dynamic> {
+  final dynamic value;
+  _FakeRpcResult(this.value);
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(dynamic) onValue, {Function? onError}) {
+    return Future.value(value).then(onValue, onError: onError);
   }
 }
 
@@ -163,5 +177,23 @@ void main() {
       {'expense_id': 'e1', 'user_id': 'u1', 'share_amount': '50.00'},
       {'expense_id': 'e1', 'user_id': 'u2', 'share_amount': '50.00'},
     ]));
+  });
+
+  test('getFriendActivity calls the RPC and returns items sorted newest-first', () async {
+    final client = MockSupabaseClient();
+    when(() => client.rpc('get_friend_activity',
+            params: {'other_user': 'friend-1'}))
+        .thenAnswer((_) => _FakeRpcResult([
+      {'kind': 'expense', 'ref_id': 'e1', 'name': 'Old', 'net': 100.0, 'activity_date': '2026-07-01'},
+      {'kind': 'group', 'ref_id': 'g1', 'name': 'Trip', 'net': -50.0, 'activity_date': '2026-07-20'},
+    ]));
+
+    final repo = ExpenseRepository(client);
+    final items = await repo.getFriendActivity('friend-1');
+
+    expect(items.length, 2);
+    expect(items.first.name, 'Trip'); // newest first
+    expect(items.last.name, 'Old');
+    expect(items.first.kind, FriendActivityKind.group);
   });
 }

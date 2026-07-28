@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/models/expense.dart';
 import 'package:meowes_app/models/expense_split.dart';
+import 'package:meowes_app/models/friend_activity_item.dart';
 import 'package:meowes_app/splitting/split_calculator.dart';
 
 class ExpenseRepository {
@@ -87,6 +88,21 @@ class ExpenseRepository {
   Future<List<ExpenseSplit>> getExpenseSplits(String expenseId) async {
     final rows = await _client.from('expense_splits').select().eq('expense_id', expenseId);
     return rows.map(ExpenseSplit.fromJson).toList();
+  }
+
+  Future<List<FriendActivityItem>> getFriendActivity(String otherUserId) async {
+    final rows = await _client.rpc('get_friend_activity', params: {'other_user': otherUserId});
+    final results = rows is List<dynamic> ? rows : const <dynamic>[];
+    final items = results
+        .map((r) => FriendActivityItem.fromJson(r as Map<String, dynamic>))
+        .toList();
+    items.sort((a, b) => b.date.compareTo(a.date));
+    return items;
+  }
+
+  Future<Expense> getExpenseById(String expenseId) async {
+    final row = await _client.from('expenses').select().eq('id', expenseId).single();
+    return Expense.fromJson(row);
   }
 
   Future<List<Expense>> getSharedExpenses(String otherUserId) async {

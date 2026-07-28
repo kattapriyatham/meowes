@@ -20,6 +20,17 @@ recorded here so they're visible in the repo rather than only in session state.
 
 ## Resolved
 
+- ~~Friend Detail showed an empty expense history despite a non-zero
+  balance~~ — `get_friend_balance` sums pairwise splits across all expenses
+  (no group filter), but `get_shared_expenses` restricted itself to
+  `group_id is null`, so group-derived debts moved the balance without ever
+  appearing as a line item. Migration `20260728130000_get_shared_expenses_include_groups.sql`
+  rewrites `get_shared_expenses` so its row predicate mirrors
+  `get_friend_balance`'s two expense terms exactly (payer + counterparty's
+  split), dropping the group filter. Friend Detail's AppBar now shows the
+  friend's name instead of a hard-coded "Friend". Covered by a new
+  authenticated-role case in `run_balance_rpc_tests.sh`.
+
 - ~~No root routing~~ — `main.dart` now routes through `RootScreen`
   (`lib/features/root/root_screen.dart`): signed out → `SignInScreen`, signed
   in with no `users` row yet → `ProfileSetupScreen`, otherwise → `HomeScreen`.
