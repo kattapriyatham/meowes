@@ -78,7 +78,7 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     blobTeal: Color(0x4D7FE0D0), // #7FE0D0 @ 30%
     glassFill: Color(0x8CFFFFFF), // white @ 55%
     glassBorder: Color(0xB3FFFFFF), // white @ 70%
-    glassSheen: Color(0x99FFFFFF), // white @ 60%
+    glassSheen: Color(0x40FFFFFF), // white @ 25% (subtle thin top highlight)
     glassStrongFill: Color(0x99FFFFFF), // white @ 60%
     glassStrongBorder: Color(0xBFFFFFFF), // white @ 75%
     solidFallback: Color(0xFFF3F5FB),

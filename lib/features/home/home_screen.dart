@@ -10,8 +10,11 @@ import 'package:meowes_app/features/expenses/add_expense_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart';
 import 'package:meowes_app/features/groups/create_group_screen.dart';
 import 'package:meowes_app/features/notifications/notifications_screen.dart';
+import 'package:meowes_app/core/theme/app_typography.dart';
+import 'package:meowes_app/features/friends/friend_detail_screen.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/friendship.dart';
+import 'package:meowes_app/repositories/friend_repository.dart';
 
 /// Home tab: a quick overview (greeting + overall-balance hero + primary
 /// actions). The full friends/groups lists that used to live here now live
@@ -62,6 +65,7 @@ class HomeScreen extends ConsumerWidget {
                       me: me,
                       friendIds: friendIds,
                       client: client,
+                      friendRepo: friendRepo,
                     );
                   },
                 ),
@@ -125,39 +129,106 @@ void _showAddMenu(BuildContext context) {
   );
 }
 
+/// Per-friend balance for the Home overview (name + net balance).
+class _FriendBal {
+  final String id;
+  final String name;
+  final double balance;
+  const _FriendBal({required this.id, required this.name, required this.balance});
+}
+
+/// Aggregated overview data: net balance, the owed/owe breakdown, and the
+/// non-settled friends sorted by magnitude for the preview list.
+class _OverviewData {
+  final double net;
+  final double owed;
+  final double owe;
+  final List<_FriendBal> top;
+  const _OverviewData({
+    required this.net,
+    required this.owed,
+    required this.owe,
+    required this.top,
+  });
+}
+
 class _OverviewBody extends StatelessWidget {
   final String me;
   final List<String> friendIds;
   final SupabaseClient client;
+  final FriendRepository friendRepo;
 
   const _OverviewBody({
     required this.me,
     required this.friendIds,
     required this.client,
+    required this.friendRepo,
   });
 
-  Future<double> _loadTotalBalance() async {
-    if (friendIds.isEmpty) return 0;
-    final balances = await Future.wait(friendIds.map((id) async {
+  Future<_OverviewData> _load() async {
+    if (friendIds.isEmpty) {
+      return const _OverviewData(net: 0, owed: 0, owe: 0, top: []);
+    }
+    final profiles = await friendRepo.getPublicProfiles(friendIds);
+    final byId = {for (final p in profiles) p.id: p};
+    final entries = await Future.wait(friendIds.map((id) async {
       final b = await client.rpc('get_friend_balance', params: {'user_a': me, 'user_b': id});
-      return (b as num?)?.toDouble() ?? 0.0;
+      return _FriendBal(
+        id: id,
+        name: byId[id]?.name ?? '...',
+        balance: (b as num?)?.toDouble() ?? 0.0,
+      );
     }));
-    return balances.fold<double>(0, (a, b) => a + b);
+    var net = 0.0, owed = 0.0, owe = 0.0;
+    for (final e in entries) {
+      net += e.balance;
+      if (e.balance > 0.005) {
+        owed += e.balance;
+      } else if (e.balance < -0.005) {
+        owe += -e.balance;
+      }
+    }
+    final top = entries.where((e) => e.balance.abs() > 0.005).toList()
+      ..sort((a, b) => b.balance.abs().compareTo(a.balance.abs()));
+    return _OverviewData(net: net, owed: owed, owe: owe, top: top);
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<double>(
-      future: _loadTotalBalance(),
+    return FutureBuilder<_OverviewData>(
+      future: _load(),
       builder: (context, snapshot) {
-        final total = snapshot.data ?? 0;
-        final loading = friendIds.isNotEmpty && snapshot.connectionState == ConnectionState.waiting;
+        final data = snapshot.data;
+        final loading =
+            friendIds.isNotEmpty && snapshot.connectionState == ConnectionState.waiting;
 
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _BalanceHero(balance: total, loading: loading),
-            const SizedBox(height: 24),
+            _BalanceHero(balance: data?.net ?? 0, loading: loading),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatTile(
+                    label: "You're owed",
+                    amount: data?.owed ?? 0,
+                    positive: true,
+                    loading: loading,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatTile(
+                    label: 'You owe',
+                    amount: data?.owe ?? 0,
+                    positive: false,
+                    loading: loading,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
@@ -180,6 +251,8 @@ class _OverviewBody extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 28),
+            _BalancesSection(loading: loading, data: data, friendIds: friendIds),
           ],
         );
       },
@@ -187,9 +260,8 @@ class _OverviewBody extends StatelessWidget {
   }
 }
 
-/// Overall-balance hero: sum of `get_friend_balance` across all accepted
-/// friends. Glass-styled (GlassCard + GlassTokens) — no hardcoded colors,
-/// no emoji/cat.
+/// Full-width overall-balance hero. Space Grotesk money numeral via
+/// [moneyStyle]; color from GlassTokens (green owed / red owe / grey settled).
 class _BalanceHero extends StatelessWidget {
   final double balance;
   final bool loading;
@@ -201,25 +273,183 @@ class _BalanceHero extends StatelessWidget {
     final isOwed = balance > 0.005;
     final isOwing = balance < -0.005;
     final color = isOwed ? t.positive : (isOwing ? t.negative : t.settled);
-    final label = isOwed ? 'You are owed' : (isOwing ? 'You owe' : 'All settled up');
+    final label = isOwed
+        ? 'Overall, you are owed'
+        : (isOwing ? 'Overall, you owe' : 'All settled up');
 
     return GlassCard(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: TextStyle(color: t.textSecondary, fontWeight: FontWeight.w600, fontSize: 15),
+            style: TextStyle(color: t.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           if (loading)
-            const SkeletonLoader(height: 32, width: 110)
+            const SkeletonLoader(height: 42, width: 160)
           else
-            Text(
-              '₹${balance.abs().toStringAsFixed(2)}',
-              style: TextStyle(color: color, fontSize: 32, fontWeight: FontWeight.w800),
-            ),
+            Text('₹${balance.abs().toStringAsFixed(2)}', style: moneyStyle(color, size: 40)),
         ],
+      ),
+    );
+  }
+}
+
+/// One half of the owed/owe breakdown row.
+class _StatTile extends StatelessWidget {
+  final String label;
+  final double amount;
+  final bool positive;
+  final bool loading;
+  const _StatTile({
+    required this.label,
+    required this.amount,
+    required this.positive,
+    required this.loading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    final color = positive ? t.positive : t.negative;
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: t.textMuted, fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          if (loading)
+            const SkeletonLoader(height: 22, width: 80)
+          else
+            Text('₹${amount.toStringAsFixed(2)}', style: moneyStyle(color, size: 18)),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Balances" preview: the top few non-settled friends, tapping into their
+/// detail. An empty/settled state fills the space when there's nothing owed.
+class _BalancesSection extends StatelessWidget {
+  final bool loading;
+  final _OverviewData? data;
+  final List<String> friendIds;
+  const _BalancesSection({required this.loading, required this.data, required this.friendIds});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+
+    if (loading) {
+      return GlassCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Column(
+          children: List.generate(
+            3,
+            (i) => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 13),
+              child: Row(
+                children: [
+                  SkeletonLoader(height: 38, width: 38, radius: 19),
+                  SizedBox(width: 12),
+                  Expanded(child: SkeletonLoader(height: 14)),
+                  SizedBox(width: 12),
+                  SkeletonLoader(height: 14, width: 64),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final top = data?.top ?? const <_FriendBal>[];
+    if (top.isEmpty) {
+      return EmptyStateBox(
+        icon: Icons.account_balance_wallet_outlined,
+        message: friendIds.isEmpty
+            ? 'Add a friend to start splitting expenses.'
+            : "You're all settled up.",
+      );
+    }
+
+    final shown = top.take(5).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          child: Text(
+            'BALANCES',
+            style: TextStyle(
+              color: t.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ),
+        GlassCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Column(
+            children: [
+              for (var i = 0; i < shown.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: t.glassBorder),
+                _BalanceRow(fb: shown[i]),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BalanceRow extends StatelessWidget {
+  final _FriendBal fb;
+  const _BalanceRow({required this.fb});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    final owe = fb.balance < 0;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => FriendDetailScreen(friendUserId: fb.id)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              AppAvatar(seed: fb.id, label: fb.name),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fb.name,
+                      style: TextStyle(color: t.textPrimary, fontWeight: FontWeight.w500, fontSize: 14),
+                    ),
+                    Text(
+                      owe ? 'you owe' : 'owes you',
+                      style: TextStyle(color: t.textMuted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              BalanceAmount(balance: fb.balance),
+            ],
+          ),
+        ),
       ),
     );
   }
