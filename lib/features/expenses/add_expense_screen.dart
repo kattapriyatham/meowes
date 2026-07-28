@@ -186,18 +186,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 20),
-              const SectionHeader(title: 'Paid by'),
-              const SizedBox(height: 8),
-              for (final id in widget.participantIds)
-                RadioListTile<String>(
-                  value: id,
-                  groupValue: _paidBy,
-                  onChanged: (v) => setState(() => _paidBy = v!),
-                  title: Text(nameOf(id)),
-                  activeColor: AppColors.coral,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              const SizedBox(height: 12),
+              if (!isEditing) ...[
+                const SectionHeader(title: 'Paid by'),
+                const SizedBox(height: 8),
+                for (final id in widget.participantIds)
+                  RadioListTile<String>(
+                    value: id,
+                    groupValue: _paidBy,
+                    onChanged: (v) => setState(() => _paidBy = v!),
+                    title: Text(nameOf(id)),
+                    activeColor: AppColors.coral,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                const SizedBox(height: 12),
+              ],
               const SectionHeader(title: 'Split between'),
               const SizedBox(height: 8),
               Wrap(
