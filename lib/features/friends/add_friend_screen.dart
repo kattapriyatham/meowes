@@ -120,6 +120,7 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
                     ),
                     PillButton(
                       label: 'Send request',
+                      dense: true,
                       onTap: () async {
                         await repo.sendFriendRequest(_found!.id);
                         if (context.mounted) Navigator.of(context).pop();

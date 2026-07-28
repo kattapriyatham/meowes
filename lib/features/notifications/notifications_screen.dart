@@ -111,12 +111,14 @@ class _PendingRequestsList extends StatelessWidget {
                       PillButton(
                         label: 'Decline',
                         primary: false,
+                        dense: true,
                         onTap: () => friendRepo.declineFriendRequest(requesterIds[i]),
                       ),
                       const SizedBox(width: 8),
                       PillButton(
                         label: 'Accept',
                         primary: true,
+                        dense: true,
                         onTap: () => friendRepo.acceptFriendRequest(requesterIds[i]),
                       ),
                     ],
@@ -173,6 +175,7 @@ class _PendingSettlementsList extends StatelessWidget {
                       PillButton(
                         label: 'Confirm',
                         primary: true,
+                        dense: true,
                         onTap: () => settlementRepo.confirmSettlement(settlements[i].id),
                       ),
                     ],
