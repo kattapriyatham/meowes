@@ -9,6 +9,7 @@ import 'package:meowes_app/features/friends/add_friend_screen.dart';
 import 'package:meowes_app/features/friends/friend_detail_screen.dart';
 import 'package:meowes_app/features/groups/create_group_screen.dart';
 import 'package:meowes_app/features/groups/group_detail_screen.dart';
+import 'package:meowes_app/features/notifications/notifications_screen.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/friendship.dart';
 import 'package:meowes_app/models/group.dart';
@@ -145,10 +146,15 @@ class _GreetingHeader extends StatelessWidget {
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              child: const Icon(Icons.notifications_none, color: AppColors.textDark),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: const Icon(Icons.notifications_none, color: AppColors.textDark),
+              ),
             ),
           ],
         );
