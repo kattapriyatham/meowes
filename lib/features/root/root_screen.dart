@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/features/auth/profile_setup_screen.dart';
 import 'package:meowes_app/features/auth/sign_in_screen.dart';
-import 'package:meowes_app/features/home/home_screen.dart';
+import 'package:meowes_app/features/root/home_shell.dart';
 
 /// Decides where a launch of the app lands: signed out goes to sign-in;
 /// signed in but no `users` row yet goes to profile setup; otherwise home.
@@ -27,7 +27,7 @@ class RootScreen extends ConsumerWidget {
         }
         return snapshot.data == null
             ? const ProfileSetupScreen()
-            : const HomeScreen();
+            : const HomeShell();
       },
     );
   }

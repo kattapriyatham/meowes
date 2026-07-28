@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart';
 import 'package:meowes_app/features/friends/friend_detail_screen.dart';
@@ -57,7 +58,7 @@ void main() {
         expenseRepositoryProvider.overrideWithValue(mockExpenseRepo),
         friendRepositoryProvider.overrideWithValue(mockFriendRepo),
       ],
-      child: const MaterialApp(home: FriendDetailScreen(friendUserId: 'friend-1')),
+      child: MaterialApp(theme: AppTheme.dark, home: const FriendDetailScreen(friendUserId: 'friend-1')),
     ));
     await tester.pumpAndSettle();
 

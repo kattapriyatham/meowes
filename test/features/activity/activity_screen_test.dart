@@ -5,30 +5,30 @@ import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
-import 'package:meowes_app/features/home/home_screen.dart';
+import 'package:meowes_app/features/activity/activity_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart';
-import 'package:meowes_app/features/groups/create_group_screen.dart';
+import 'package:meowes_app/features/settlements/settle_up_screen.dart';
+import 'package:meowes_app/models/friendship.dart';
+import 'package:meowes_app/models/settlement.dart';
 import 'package:meowes_app/repositories/friend_repository.dart';
-import 'package:meowes_app/repositories/group_repository.dart';
+import 'package:meowes_app/repositories/settlement_repository.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 class MockGoTrueClient extends Mock implements GoTrueClient {}
-class MockRealtimeChannel extends Mock implements RealtimeChannel {}
 class MockFriendRepository extends Mock implements FriendRepository {}
-class MockGroupRepository extends Mock implements GroupRepository {}
+class MockSettlementRepository extends Mock implements SettlementRepository {}
 
 void main() {
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
   });
 
-  testWidgets('HomeScreen shows a greeting and balance hero overview', (tester) async {
+  testWidgets('ActivityScreen shows the Activity title', (tester) async {
     final mockClient = MockSupabaseClient();
     final mockAuth = MockGoTrueClient();
     final mockFriendRepo = MockFriendRepository();
-    final mockGroupRepo = MockGroupRepository();
+    final mockSettlementRepo = MockSettlementRepository();
 
-    // Mock the auth and user
     when(() => mockClient.auth).thenReturn(mockAuth);
     when(() => mockAuth.currentUser).thenReturn(
       User(
@@ -40,13 +40,11 @@ void main() {
       ),
     );
 
-    // Mock the repositories to return empty streams
     when(() => mockFriendRepo.watchFriendships()).thenAnswer(
-      (_) => Stream.value([]),
+      (_) => Stream<List<Friendship>>.value(const []),
     );
-    when(() => mockFriendRepo.getMyProfile()).thenAnswer((_) async => null);
-    when(() => mockGroupRepo.watchMyGroups()).thenAnswer(
-      (_) => Stream.value([]),
+    when(() => mockSettlementRepo.watchPendingForMe()).thenAnswer(
+      (_) => Stream<List<Settlement>>.value(const []),
     );
 
     await tester.pumpWidget(
@@ -54,15 +52,13 @@ void main() {
         overrides: [
           supabaseClientProvider.overrideWithValue(mockClient),
           friendRepositoryProvider.overrideWithValue(mockFriendRepo),
-          groupRepositoryProvider.overrideWithValue(mockGroupRepo),
+          settlementRepositoryProvider.overrideWithValue(mockSettlementRepo),
         ],
-        child: MaterialApp(theme: AppTheme.dark, home: const HomeScreen()),
+        child: MaterialApp(theme: AppTheme.dark, home: const ActivityScreen()),
       ),
     );
     await tester.pump();
-    expect(find.text('Hi there!'), findsOneWidget);
-    expect(find.text('All settled up'), findsOneWidget);
-    expect(find.text('Add expense'), findsOneWidget);
-    expect(find.text('Settle up'), findsOneWidget);
+
+    expect(find.text('Activity'), findsWidgets);
   });
 }
