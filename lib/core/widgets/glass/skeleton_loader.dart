@@ -36,7 +36,12 @@ class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProvid
     final box = Container(
       height: widget.height,
       width: widget.width,
-      decoration: BoxDecoration(color: t.glassStrongFill, borderRadius: BorderRadius.circular(widget.radius)),
+      decoration: BoxDecoration(
+        // A subtle contrast against whatever surface it sits on (visible on
+        // both the cream cards and the dark cards).
+        color: t.textPrimary.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(widget.radius),
+      ),
     );
     if (reduceMotion) return Opacity(opacity: 0.5, child: box);
     return FadeTransition(

@@ -4,12 +4,12 @@ import 'package:meowes_app/core/theme/glass_tokens.dart';
 
 void main() {
   test('light and dark tokens differ and expose the fixed palette', () {
-    expect(GlassTokens.dark.gradientBottom, const Color(0xFF0E0F16));
-    expect(GlassTokens.light.gradientTop, const Color(0xFFEEF1FA));
+    expect(GlassTokens.dark.gradientBottom, const Color(0xFF17130F));
+    expect(GlassTokens.light.gradientTop, const Color(0xFFF0E9DC));
     expect(GlassTokens.dark.positive, const Color(0xFF4ADE80));
-    expect(GlassTokens.light.positive, const Color(0xFF0E9E6E));
-    expect(GlassTokens.dark.brandStart, const Color(0xFF6E8BFF));
-    expect(GlassTokens.light.textPrimary, const Color(0xFF1A1C22));
+    expect(GlassTokens.light.positive, const Color(0xFF2E9E5B));
+    expect(GlassTokens.light.cardColor, const Color(0xFFF6F1E9));
+    expect(GlassTokens.light.textPrimary, const Color(0xFF211E1A));
     expect(GlassTokens.dark.blurCard, 18);
     expect(GlassTokens.dark.blurStrong, 24);
   });
