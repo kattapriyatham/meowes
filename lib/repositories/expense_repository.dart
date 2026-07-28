@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/models/expense.dart';
+import 'package:meowes_app/models/expense_split.dart';
 import 'package:meowes_app/splitting/split_calculator.dart';
 
 class ExpenseRepository {
@@ -35,22 +36,14 @@ class ExpenseRepository {
         .single();
     final expense = Expense.fromJson(row);
 
-    final shares = SplitCalculator.calculate(
-      totalMinorUnits: amountMinorUnits,
-      type: splitType,
+    await _writeSplits(
+      expenseId: expense.id,
+      amountMinorUnits: amountMinorUnits,
+      splitType: splitType,
       participantIds: participantIds,
       percentages: percentages,
       exactAmounts: exactAmounts,
     );
-
-    await _client.from('expense_splits').insert([
-      for (final entry in shares.entries)
-        {
-          'expense_id': expense.id,
-          'user_id': entry.key,
-          'share_amount': (entry.value / 100).toStringAsFixed(2),
-        },
-    ]);
 
     return expense;
   }
@@ -59,6 +52,10 @@ class ExpenseRepository {
     required String expenseId,
     required String description,
     required int amountMinorUnits,
+    required SplitType splitType,
+    required List<String> participantIds,
+    Map<String, double>? percentages,
+    Map<String, int>? exactAmounts,
   }) async {
     final me = _client.auth.currentUser!.id;
     await _client.from('expenses').update({
@@ -67,9 +64,17 @@ class ExpenseRepository {
       'edited_at': DateTime.now().toIso8601String(),
       'edited_by': me,
     }).eq('id', expenseId);
-    // Re-splitting on edit reuses the same expense_splits insert path as
-    // createExpense; a full re-split (delete old splits, insert new ones
-    // via SplitCalculator) is called from expense_detail_screen.dart (Task 13).
+
+    await _client.from('expense_splits').delete().eq('expense_id', expenseId);
+
+    await _writeSplits(
+      expenseId: expenseId,
+      amountMinorUnits: amountMinorUnits,
+      splitType: splitType,
+      participantIds: participantIds,
+      percentages: percentages,
+      exactAmounts: exactAmounts,
+    );
   }
 
   Future<void> deleteExpense(String expenseId) async {
@@ -77,6 +82,11 @@ class ExpenseRepository {
         .from('expenses')
         .update({'deleted_at': DateTime.now().toIso8601String()})
         .eq('id', expenseId);
+  }
+
+  Future<List<ExpenseSplit>> getExpenseSplits(String expenseId) async {
+    final rows = await _client.from('expense_splits').select().eq('expense_id', expenseId);
+    return rows.map(ExpenseSplit.fromJson).toList();
   }
 
   Future<List<Expense>> getSharedExpenses(String otherUserId) async {
@@ -97,6 +107,32 @@ class ExpenseRepository {
       expenses.sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
       return expenses;
     });
+  }
+
+  Future<void> _writeSplits({
+    required String expenseId,
+    required int amountMinorUnits,
+    required SplitType splitType,
+    required List<String> participantIds,
+    Map<String, double>? percentages,
+    Map<String, int>? exactAmounts,
+  }) async {
+    final shares = SplitCalculator.calculate(
+      totalMinorUnits: amountMinorUnits,
+      type: splitType,
+      participantIds: participantIds,
+      percentages: percentages,
+      exactAmounts: exactAmounts,
+    );
+
+    await _client.from('expense_splits').insert([
+      for (final entry in shares.entries)
+        {
+          'expense_id': expenseId,
+          'user_id': entry.key,
+          'share_amount': (entry.value / 100).toStringAsFixed(2),
+        },
+    ]);
   }
 }
 

@@ -61,6 +61,16 @@ class _FakeInsertResult extends Fake
   }
 }
 
+class _FakeFilterChain extends Fake implements PostgrestFilterBuilder<PostgrestList> {
+  @override
+  PostgrestFilterBuilder<PostgrestList> eq(String column, Object value) => this;
+
+  @override
+  Future<U> then<U>(FutureOr<U> Function(PostgrestList) onValue, {Function? onError}) {
+    return Future.value(<Map<String, dynamic>>[]).then(onValue, onError: onError);
+  }
+}
+
 void main() {
   test('createExpense inserts expense then inserts splits from SplitCalculator', () async {
     final client = MockSupabaseClient();
@@ -108,6 +118,45 @@ void main() {
     );
 
     expect(expense.id, 'e1');
+    final captured = verify(() => splitsTable.insert(captureAny())).captured.single
+        as List<Map<String, dynamic>>;
+    expect(captured, containsAll([
+      {'expense_id': 'e1', 'user_id': 'u1', 'share_amount': '50.00'},
+      {'expense_id': 'e1', 'user_id': 'u2', 'share_amount': '50.00'},
+    ]));
+  });
+
+  test('editExpense replaces old splits with a fresh SplitCalculator recompute', () async {
+    final client = MockSupabaseClient();
+    final auth = MockGoTrueClient();
+    final expensesTable = MockQueryBuilder();
+    final splitsTable = MockQueryBuilder();
+
+    when(() => client.auth).thenReturn(auth);
+    when(() => auth.currentUser).thenReturn(
+      User(
+        id: 'u1',
+        appMetadata: const {},
+        userMetadata: const {},
+        aud: 'authenticated',
+        createdAt: '2026-07-27T00:00:00Z',
+      ),
+    );
+    when(() => client.from('expenses')).thenAnswer((_) => expensesTable);
+    when(() => client.from('expense_splits')).thenAnswer((_) => splitsTable);
+    when(() => expensesTable.update(any())).thenAnswer((_) => _FakeFilterChain());
+    when(() => splitsTable.delete()).thenAnswer((_) => _FakeFilterChain());
+    when(() => splitsTable.insert(any())).thenAnswer((_) => _FakeInsertResult());
+
+    final repo = ExpenseRepository(client);
+    await repo.editExpense(
+      expenseId: 'e1',
+      description: 'Coffee (updated)',
+      amountMinorUnits: 10000,
+      splitType: SplitType.equal,
+      participantIds: ['u1', 'u2'],
+    );
+
     final captured = verify(() => splitsTable.insert(captureAny())).captured.single
         as List<Map<String, dynamic>>;
     expect(captured, containsAll([
