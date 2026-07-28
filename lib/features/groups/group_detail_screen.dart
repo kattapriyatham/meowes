@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/app_theme.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
+import 'package:meowes_app/features/expenses/add_expense_screen.dart';
 import 'package:meowes_app/features/expenses/expense_detail_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
 import 'package:meowes_app/features/settlements/settle_up_screen.dart';
@@ -42,15 +43,30 @@ class GroupDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(supabaseClientProvider).auth.currentUser!.id;
     final expenseRepo = ref.watch(expenseRepositoryProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Group')),
-      body: FutureBuilder<_GroupDetailData>(
-        future: _load(ref),
-        builder: (context, snapshot) {
-          final data = snapshot.data ?? const _GroupDetailData(memberIds: [], namesById: {}, debts: []);
-          String nameOf(String id) => data.namesById[id] ?? 'Unknown';
+    return FutureBuilder<_GroupDetailData>(
+      future: _load(ref),
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? const _GroupDetailData(memberIds: [], namesById: {}, debts: []);
+        String nameOf(String id) => data.namesById[id] ?? 'Unknown';
+        // Current user first so the Add-expense payer defaults to "me".
+        final participantIds = [me, ...data.memberIds.where((id) => id != me)];
 
-          return ListView(
+        return Scaffold(
+          appBar: AppBar(title: const Text('Group')),
+          floatingActionButton: data.memberIds.isEmpty
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AddExpenseScreen(
+                        groupId: groupId,
+                        participantIds: participantIds,
+                      ),
+                    ),
+                  ),
+                  child: const Icon(Icons.add),
+                ),
+          body: ListView(
             padding: const EdgeInsets.all(20),
             children: [
               AvatarStack(
@@ -147,9 +163,9 @@ class GroupDetailScreen extends ConsumerWidget {
                   ],
                 ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
