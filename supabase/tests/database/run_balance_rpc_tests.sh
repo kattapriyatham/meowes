@@ -165,5 +165,36 @@ check "Querying a second, unrelated empty group in the same call returns no debt
   "(select count(*) from get_group_debts('$TRIP_GROUP')) = 1 and (select count(*) from get_group_debts('$EMPTY_GROUP')) = 0" \
   "(select count(*) from get_group_debts('$EMPTY_GROUP'))"
 
+# get_shared_expenses must line up with get_friend_balance: any expense
+# that moves the pairwise balance should appear in the friend's history.
+# It reads auth.uid(), so (like the RLS test above) it must run under the
+# authenticated role with a JWT sub claim — the service role used by
+# check() has a null auth.uid() and would return nothing.
+#
+# At this point three expenses involve the Alex/Sam pair:
+#   EXPENSE1        - direct, Alex paid, split Alex+Sam
+#   EXPENSE_SAM_PAID - direct, Sam paid,  split Alex+Sam
+#   EXPENSE2        - GROUP (Trip), Alex paid, split Alex+Sam+Priya
+# All three contribute to get_friend_balance(Alex, Sam), so all three must
+# show in Alex's history for Sam. The group one (EXPENSE2) is the
+# regression: the original group_id-is-null filter dropped it, producing a
+# non-zero balance with a missing line item.
+shared_json=$(supabase db query --linked --output-format json "
+  set local role authenticated;
+  set local request.jwt.claim.sub = '$ALEX';
+  select
+    (select count(*)::int from get_shared_expenses('$SAM')) as total,
+    (select count(*)::int from get_shared_expenses('$SAM') where id = '$EXPENSE2') as has_group;
+" 2>/dev/null)
+shared_total=$(echo "$shared_json" | jq -r '.rows[0].total // "null"')
+shared_has_group=$(echo "$shared_json" | jq -r '.rows[0].has_group // "null"')
+if [[ "$shared_total" == "3" && "$shared_has_group" == "1" ]]; then
+  echo "ok - get_shared_expenses returns all three shared expenses incl. the group one"
+  pass_count=$((pass_count + 1))
+else
+  echo "not ok - get_shared_expenses missing shared expenses (total: $shared_total, has_group: $shared_has_group)"
+  fail_count=$((fail_count + 1))
+fi
+
 echo "$pass_count passed, $fail_count failed"
 [[ "$fail_count" -eq 0 ]]

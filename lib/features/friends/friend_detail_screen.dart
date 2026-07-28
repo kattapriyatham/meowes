@@ -6,7 +6,9 @@ import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/expenses/add_expense_screen.dart';
 import 'package:meowes_app/features/expenses/expense_detail_screen.dart';
+import 'package:meowes_app/features/friends/add_friend_screen.dart';
 import 'package:meowes_app/features/settlements/settle_up_screen.dart';
+import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/expense.dart';
 import 'package:meowes_app/repositories/expense_repository.dart';
 
@@ -18,9 +20,18 @@ class FriendDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final client = ref.watch(supabaseClientProvider);
     final expenseRepo = ref.watch(expenseRepositoryProvider);
+    final friendRepo = ref.watch(friendRepositoryProvider);
     final me = client.auth.currentUser!.id;
     return Scaffold(
-      appBar: AppBar(title: const Text('Friend')),
+      appBar: AppBar(
+        title: FutureBuilder<List<AppUser>>(
+          future: friendRepo.getPublicProfiles([friendUserId]),
+          builder: (context, snapshot) {
+            final name = snapshot.data?.isNotEmpty == true ? snapshot.data!.first.name : null;
+            return Text(name ?? 'Friend');
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: FutureBuilder(
