@@ -8,7 +8,6 @@ import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/groups/create_group_screen.dart';
 import 'package:meowes_app/features/groups/group_detail_screen.dart';
 import 'package:meowes_app/models/group.dart';
-import 'package:meowes_app/repositories/group_repository.dart';
 
 /// Groups tab: the user's groups with per-group net balances. The groups
 /// stream and the `get_group_debts` net computation are lifted verbatim from

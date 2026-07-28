@@ -1,8 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meowes_app/core/a11y/accessibility.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 
-class GlassSurface extends StatelessWidget {
+class GlassSurface extends ConsumerWidget {
   const GlassSurface({
     super.key,
     required this.child,
@@ -19,12 +21,14 @@ class GlassSurface extends StatelessWidget {
   final bool disableBlur;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).extension<GlassTokens>()!;
     final border = strong ? t.glassStrongBorder : t.glassBorder;
     final radiusGeo = BorderRadius.circular(radius);
+    final userReduceTransparency = ref.watch(reduceTransparencyProvider);
+    final effectiveDisableBlur = disableBlur || glassDisabled(context, userReduceTransparency: userReduceTransparency);
 
-    if (disableBlur) {
+    if (effectiveDisableBlur) {
       return Container(
         padding: padding,
         decoration: BoxDecoration(

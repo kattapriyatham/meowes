@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meowes_app/core/a11y/accessibility.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/glass/glass_surface.dart';
 
@@ -30,14 +31,15 @@ class _GlassButtonState extends State<GlassButton> {
             decoration: BoxDecoration(gradient: t.brandGradient, borderRadius: BorderRadius.circular(14)),
             child: content,
           );
+    final reduceMotion = motionReduced(context);
     return GestureDetector(
       onTapDown: (_) => setState(() => _down = true),
       onTapUp: (_) => setState(() => _down = false),
       onTapCancel: () => setState(() => _down = false),
       onTap: widget.onPressed,
       child: AnimatedScale(
-        scale: _down ? 0.98 : 1,
-        duration: const Duration(milliseconds: 90),
+        scale: !reduceMotion && _down ? 0.98 : 1,
+        duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 90),
         child: child,
       ),
     );

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:meowes_app/core/app_theme.dart';
+import 'package:meowes_app/core/theme/glass_tokens.dart';
 
 /// Inline colored "+₹420.00" / "-₹150.00" / "Settled" text for a single
 /// friend/group/settlement row. balance > 0 means money is owed TO the
@@ -12,11 +12,10 @@ class BalanceAmount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
     final isOwed = balance > 0.005;
     final isOwing = balance < -0.005;
-    final color = isOwed
-        ? AppColors.owedText
-        : (isOwing ? AppColors.owingText : AppColors.settledText);
+    final color = isOwed ? t.positive : (isOwing ? t.negative : t.settled);
     final text = isOwed
         ? '+₹${balance.toStringAsFixed(2)}'
         : (isOwing ? '-₹${balance.abs().toStringAsFixed(2)}' : 'Settled');
