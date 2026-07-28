@@ -13,7 +13,6 @@ import 'package:meowes_app/repositories/group_repository.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 class MockGoTrueClient extends Mock implements GoTrueClient {}
-class MockRealtimeChannel extends Mock implements RealtimeChannel {}
 class MockFriendRepository extends Mock implements FriendRepository {}
 class MockGroupRepository extends Mock implements GroupRepository {}
 
@@ -22,13 +21,12 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
   });
 
-  testWidgets('HomeScreen shows a greeting and balance hero overview', (tester) async {
+  testWidgets('HomeScreen is an overview: greeting + balance hero + actions, no Groups list', (tester) async {
     final mockClient = MockSupabaseClient();
     final mockAuth = MockGoTrueClient();
     final mockFriendRepo = MockFriendRepository();
     final mockGroupRepo = MockGroupRepository();
 
-    // Mock the auth and user
     when(() => mockClient.auth).thenReturn(mockAuth);
     when(() => mockAuth.currentUser).thenReturn(
       User(
@@ -40,7 +38,6 @@ void main() {
       ),
     );
 
-    // Mock the repositories to return empty streams
     when(() => mockFriendRepo.watchFriendships()).thenAnswer(
       (_) => Stream.value([]),
     );
@@ -60,8 +57,14 @@ void main() {
       ),
     );
     await tester.pump();
+
+    // Groups (and Friends) lists have moved to their own tabs — Home is now
+    // just an overview and must not render either section header/list.
+    expect(find.text('Groups'), findsNothing);
+    expect(find.text('Friends'), findsNothing);
+
+    // Overview content: greeting, balance hero, primary actions.
     expect(find.text('Hi there!'), findsOneWidget);
-    expect(find.text('All settled up'), findsOneWidget);
     expect(find.text('Add expense'), findsOneWidget);
     expect(find.text('Settle up'), findsOneWidget);
   });
