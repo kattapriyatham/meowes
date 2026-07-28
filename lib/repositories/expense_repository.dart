@@ -78,6 +78,14 @@ class ExpenseRepository {
         .update({'deleted_at': DateTime.now().toIso8601String()})
         .eq('id', expenseId);
   }
+
+  Future<List<Expense>> getSharedExpenses(String otherUserId) async {
+    final rows = await _client.rpc('get_shared_expenses', params: {'other_user': otherUserId});
+    final results = rows is List<dynamic> ? rows : const <dynamic>[];
+    final expenses = results.map((r) => Expense.fromJson(r as Map<String, dynamic>)).toList();
+    expenses.sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
+    return expenses;
+  }
 }
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>(
