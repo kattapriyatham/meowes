@@ -86,6 +86,18 @@ class ExpenseRepository {
     expenses.sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
     return expenses;
   }
+
+  Stream<List<Expense>> watchExpenses({required String groupId}) {
+    return _client
+        .from('expenses')
+        .stream(primaryKey: ['id'])
+        .eq('group_id', groupId)
+        .map((rows) {
+      final expenses = rows.map(Expense.fromJson).where((e) => !e.isDeleted).toList();
+      expenses.sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
+      return expenses;
+    });
+  }
 }
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>(
