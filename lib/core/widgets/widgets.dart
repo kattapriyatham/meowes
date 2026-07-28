@@ -14,4 +14,6 @@ export 'glass/glass_nav_dock.dart';
 export 'glass/glass_scaffold.dart';
 export 'glass/glass_surface.dart';
 export 'glass/skeleton_loader.dart';
+export 'pill_button.dart';
 export 'soft_card.dart';
+export 'soft_icon_button.dart';

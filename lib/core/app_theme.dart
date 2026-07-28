@@ -47,6 +47,7 @@ class AppTheme {
       seedColor: tokens.brandSolid,
       brightness: brightness,
     ).copyWith(primary: tokens.brandSolid);
+    final radius = BorderRadius.circular(16);
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -54,11 +55,62 @@ class AppTheme {
       scaffoldBackgroundColor: Colors.transparent,
       textTheme: buildTextTheme(tokens.textPrimary),
       extensions: [tokens],
+      iconTheme: IconThemeData(color: tokens.textPrimary),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+      ),
+      dividerTheme: DividerThemeData(color: tokens.textPrimary.withValues(alpha: 0.06), thickness: 1),
+      cardTheme: CardThemeData(
+        color: tokens.cardColor,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: tokens.cardColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+      ),
+      listTileTheme: ListTileThemeData(iconColor: tokens.textPrimary, textColor: tokens.textPrimary),
+      // Cream "paper" form fields.
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: tokens.cardColor,
+        hintStyle: TextStyle(color: tokens.textMuted),
+        labelStyle: TextStyle(color: tokens.textSecondary),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: tokens.textPrimary.withValues(alpha: 0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: tokens.brandSolid, width: 1.5),
+        ),
+      ),
+      // Ink pill buttons (match the Home primary action).
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: tokens.brandSolid,
+          foregroundColor: tokens.onBrand,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: tokens.brandSolid),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: tokens.brandSolid,
+        foregroundColor: tokens.onBrand,
+        elevation: 0,
       ),
     );
   }

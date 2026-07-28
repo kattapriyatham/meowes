@@ -153,7 +153,7 @@ class _Header extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        _SoftIconButton(
+        SoftIconButton(
           icon: Icons.notifications_none,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const NotificationsScreen()),
@@ -162,30 +162,6 @@ class _Header extends StatelessWidget {
         const SizedBox(width: 10),
         _ProfileAvatarPlaceholder(),
       ],
-    );
-  }
-}
-
-class _SoftIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _SoftIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).extension<GlassTokens>()!;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: t.cardColor,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [BoxShadow(color: t.cardShadow, blurRadius: 18, offset: const Offset(0, 8))],
-        ),
-        child: Icon(icon, color: t.textPrimary, size: 22),
-      ),
     );
   }
 }
@@ -374,9 +350,9 @@ class _BalanceCard extends StatelessWidget {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  Expanded(child: _PillButton(label: 'Add expense', primary: true, onTap: onAdd)),
+                  Expanded(child: PillButton(label: 'Add expense', primary: true, onTap: onAdd)),
                   const SizedBox(width: 12),
-                  Expanded(child: _PillButton(label: 'Settle up', primary: false, onTap: onSettle)),
+                  Expanded(child: PillButton(label: 'Settle up', primary: false, onTap: onSettle)),
                 ],
               ),
             ],
@@ -393,38 +369,6 @@ class _BalanceCard extends StatelessWidget {
           child: Icon(Icons.auto_awesome, size: 16, color: t.positive.withValues(alpha: 0.6)),
         ),
       ],
-    );
-  }
-}
-
-class _PillButton extends StatelessWidget {
-  final String label;
-  final bool primary;
-  final VoidCallback onTap;
-  const _PillButton({required this.label, required this.primary, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).extension<GlassTokens>()!;
-    final bg = primary ? t.textPrimary : Color.lerp(t.cardColor, Colors.white, 0.5)!;
-    final fg = primary ? t.onBrand : t.textPrimary;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(color: t.cardShadow, blurRadius: 14, offset: const Offset(0, 6)),
-          ],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(color: fg, fontSize: 15, fontWeight: FontWeight.w700),
-        ),
-      ),
     );
   }
 }

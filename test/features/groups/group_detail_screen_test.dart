@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meowes_app/core/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -75,7 +76,7 @@ void main() {
         expenseRepositoryProvider.overrideWithValue(mockExpenseRepo),
         friendRepositoryProvider.overrideWithValue(mockFriendRepo),
       ],
-      child: const MaterialApp(home: GroupDetailScreen(groupId: 'g1')),
+      child: MaterialApp(theme: AppTheme.light, home: const GroupDetailScreen(groupId: 'g1')),
     ));
     await tester.pumpAndSettle();
 
