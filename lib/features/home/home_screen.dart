@@ -330,6 +330,9 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
+    final isOwed = balance > 0.005;
+    final isOwing = balance < -0.005;
+    final label = isOwed ? 'You are owed' : (isOwing ? 'You owe' : 'All settled up');
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -340,11 +343,11 @@ class _BalanceCard extends StatelessWidget {
             children: [
               // Keep the numeric column clear of the cat on the right.
               Padding(
-                padding: const EdgeInsets.only(right: 120),
+                padding: const EdgeInsets.only(right: 116),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Overall balance', style: TextStyle(color: t.textSecondary, fontSize: 14)),
+                    Text(label, style: TextStyle(color: t.textSecondary, fontSize: 14)),
                     const SizedBox(height: 8),
                     if (loading)
                       const SkeletonLoader(height: 40, width: 150)
@@ -359,16 +362,12 @@ class _BalanceCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Icon(Icons.north_east, size: 18, color: t.positive),
+                          if (isOwed)
+                            Icon(Icons.north_east, size: 18, color: t.positive)
+                          else if (isOwing)
+                            Icon(Icons.south_east, size: 18, color: t.negative),
                         ],
                       ),
-                    const SizedBox(height: 6),
-                    // Placeholder trend — needs month-over-month history we don't
-                    // store yet; shown muted so it doesn't read as real data.
-                    Text(
-                      'vs last month',
-                      style: TextStyle(color: t.textMuted, fontSize: 12),
-                    ),
                   ],
                 ),
               ),
@@ -384,13 +383,13 @@ class _BalanceCard extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: -22,
-          right: 6,
-          child: _CatPlaceholder(size: 128),
+          top: 10,
+          right: -6,
+          child: _CatPlaceholder(width: 200),
         ),
         Positioned(
-          top: 6,
-          right: 118,
+          top: 4,
+          right: 150,
           child: Icon(Icons.auto_awesome, size: 16, color: t.positive.withValues(alpha: 0.6)),
         ),
       ],
@@ -430,22 +429,22 @@ class _PillButton extends StatelessWidget {
   }
 }
 
-/// Placeholder for the Meowes cat (drop assets/images/cat.png to replace).
+/// The Meowes cat, sized by width so it drapes over the Settle-up button
+/// (drop assets/images/cat.png to replace the placeholder).
 class _CatPlaceholder extends StatelessWidget {
-  final double size;
-  const _CatPlaceholder({required this.size});
+  final double width;
+  const _CatPlaceholder({required this.width});
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
     return Image.asset(
       'assets/images/cat.png',
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
+      width: width,
+      fit: BoxFit.fitWidth,
       errorBuilder: (context, error, stack) => Container(
-        width: size,
-        height: size,
+        width: width,
+        height: width * 0.7,
         decoration: BoxDecoration(
           color: t.textPrimary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(26),
@@ -454,7 +453,7 @@ class _CatPlaceholder extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.pets, size: size * 0.32, color: t.textSecondary),
+            Icon(Icons.pets, size: width * 0.22, color: t.textSecondary),
             const SizedBox(height: 6),
             Text('cat', style: TextStyle(color: t.textMuted, fontSize: 12)),
           ],
