@@ -6,14 +6,24 @@ import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
 import 'package:meowes_app/models/app_user.dart';
+import 'package:meowes_app/models/expense.dart';
+import 'package:meowes_app/models/expense_split.dart';
 import 'package:meowes_app/repositories/expense_repository.dart';
 import 'package:meowes_app/splitting/split_calculator.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final String? groupId;
   final List<String> participantIds;
+  final Expense? editing;
+  final List<ExpenseSplit>? existingSplits;
 
-  const AddExpenseScreen({super.key, this.groupId, required this.participantIds});
+  const AddExpenseScreen({
+    super.key,
+    this.groupId,
+    required this.participantIds,
+    this.editing,
+    this.existingSplits,
+  });
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -32,7 +42,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    _paidBy = widget.participantIds.isEmpty ? '' : widget.participantIds.first;
+    final editing = widget.editing;
+    final existingSplits = widget.existingSplits;
+
+    _paidBy = widget.participantIds.isEmpty
+        ? ''
+        : (editing?.paidBy ?? widget.participantIds.first);
     final evenPercent = widget.participantIds.isEmpty
         ? '0'
         : (100 / widget.participantIds.length).toStringAsFixed(1);
@@ -40,7 +55,25 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       _percentControllers[id] = TextEditingController(text: evenPercent);
       _exactAmounts[id] = 0;
     }
+
+    if (editing != null && existingSplits != null && existingSplits.isNotEmpty) {
+      _descriptionController.text = editing.description;
+      _amountController.text = (editing.amountMinorUnits / 100).toStringAsFixed(2);
+      _splitType = SplitType.exact;
+      for (final split in existingSplits) {
+        _exactAmounts[split.userId] = split.shareAmountMinorUnits / 100;
+        final pct = editing.amountMinorUnits == 0
+            ? 0.0
+            : split.shareAmountMinorUnits / editing.amountMinorUnits * 100;
+        _percentControllers[split.userId]?.text = pct.toStringAsFixed(1);
+      }
+    }
+
+    // Attached after any prefill above so setting .text programmatically
+    // doesn't trigger _onAmountChanged and reset the just-restored exact
+    // amounts back to an even split.
     _amountController.addListener(_onAmountChanged);
+
     _profilesFuture = widget.participantIds.isEmpty
         ? Future.value(<AppUser>[])
         : ref.read(friendRepositoryProvider).getPublicProfiles(widget.participantIds);
@@ -113,10 +146,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   Widget build(BuildContext context) {
     final repo = ref.watch(expenseRepositoryProvider);
     _me = ref.watch(supabaseClientProvider).auth.currentUser!.id;
+    final isEditing = widget.editing != null;
 
     if (widget.participantIds.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Add expense')),
+        appBar: AppBar(title: Text(isEditing ? 'Edit expense' : 'Add expense')),
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
@@ -130,7 +164,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add expense')),
+      appBar: AppBar(title: Text(isEditing ? 'Edit expense' : 'Add expense')),
       body: FutureBuilder<List<AppUser>>(
         future: _profilesFuture,
         builder: (context, snapshot) {
@@ -281,28 +315,42 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   onPressed: _canSave
                       ? () async {
                           final amountMinorUnits = (_totalAmount * 100).round();
-                          await repo.createExpense(
-                            description: _descriptionController.text.trim(),
-                            amountMinorUnits: amountMinorUnits,
-                            groupId: widget.groupId,
-                            paidBy: _paidBy,
-                            splitType: _splitType,
-                            participantIds: widget.participantIds,
-                            percentages: _splitType == SplitType.percentage
-                                ? {
-                                    for (final id in widget.participantIds)
-                                      id: double.parse(_percentControllers[id]!.text),
-                                  }
-                                : null,
-                            exactAmounts: _splitType == SplitType.exact
-                                ? _computeExactSharesInPaise()
-                                : null,
-                            expenseDate: DateTime.now(),
-                          );
+                          final percentages = _splitType == SplitType.percentage
+                              ? {
+                                  for (final id in widget.participantIds)
+                                    id: double.parse(_percentControllers[id]!.text),
+                                }
+                              : null;
+                          final exactAmounts =
+                              _splitType == SplitType.exact ? _computeExactSharesInPaise() : null;
+
+                          if (isEditing) {
+                            await repo.editExpense(
+                              expenseId: widget.editing!.id,
+                              description: _descriptionController.text.trim(),
+                              amountMinorUnits: amountMinorUnits,
+                              splitType: _splitType,
+                              participantIds: widget.participantIds,
+                              percentages: percentages,
+                              exactAmounts: exactAmounts,
+                            );
+                          } else {
+                            await repo.createExpense(
+                              description: _descriptionController.text.trim(),
+                              amountMinorUnits: amountMinorUnits,
+                              groupId: widget.groupId,
+                              paidBy: _paidBy,
+                              splitType: _splitType,
+                              participantIds: widget.participantIds,
+                              percentages: percentages,
+                              exactAmounts: exactAmounts,
+                              expenseDate: DateTime.now(),
+                            );
+                          }
                           if (context.mounted) Navigator.of(context).pop();
                         }
                       : null,
-                  child: const Text('Save Expense'),
+                  child: Text(isEditing ? 'Save Changes' : 'Save Expense'),
                 ),
               ),
             ],

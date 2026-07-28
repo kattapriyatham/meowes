@@ -3,10 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:meowes_app/features/expenses/expense_detail_screen.dart';
+import 'package:meowes_app/features/friends/add_friend_screen.dart';
 import 'package:meowes_app/models/expense.dart';
 import 'package:meowes_app/repositories/expense_repository.dart';
+import 'package:meowes_app/repositories/friend_repository.dart';
 
 class MockExpenseRepository extends Mock implements ExpenseRepository {}
+class MockFriendRepository extends Mock implements FriendRepository {}
 
 void main() {
   testWidgets('ExpenseDetailScreen shows Edit and Delete actions for a participant', (tester) async {
@@ -22,12 +25,15 @@ void main() {
       createdBy: 'u1',
     );
 
-    final mockRepo = MockExpenseRepository();
+    final mockExpenseRepo = MockExpenseRepository();
+    final mockFriendRepo = MockFriendRepository();
+    when(() => mockExpenseRepo.getExpenseSplits(any())).thenAnswer((_) async => []);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          expenseRepositoryProvider.overrideWithValue(mockRepo),
+          expenseRepositoryProvider.overrideWithValue(mockExpenseRepo),
+          friendRepositoryProvider.overrideWithValue(mockFriendRepo),
         ],
         child: MaterialApp(home: ExpenseDetailScreen(expense: expense)),
       ),
@@ -54,12 +60,15 @@ void main() {
       editedBy: 'u2',
     );
 
-    final mockRepo = MockExpenseRepository();
+    final mockExpenseRepo = MockExpenseRepository();
+    final mockFriendRepo = MockFriendRepository();
+    when(() => mockExpenseRepo.getExpenseSplits(any())).thenAnswer((_) async => []);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          expenseRepositoryProvider.overrideWithValue(mockRepo),
+          expenseRepositoryProvider.overrideWithValue(mockExpenseRepo),
+          friendRepositoryProvider.overrideWithValue(mockFriendRepo),
         ],
         child: MaterialApp(home: ExpenseDetailScreen(expense: expense)),
       ),
