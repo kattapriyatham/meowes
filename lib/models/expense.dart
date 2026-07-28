@@ -1,3 +1,8 @@
+int _parseAmountMinorUnits(dynamic amount) {
+  final value = amount is num ? amount : double.parse(amount as String);
+  return (value * 100).round();
+}
+
 class Expense {
   final String id;
   final String? groupId;
@@ -35,8 +40,7 @@ class Expense {
         groupId: json['group_id'] as String?,
         paidBy: json['paid_by'] as String,
         description: json['description'] as String,
-        amountMinorUnits:
-            (double.parse(json['amount'] as String) * 100).round(),
+        amountMinorUnits: _parseAmountMinorUnits(json['amount']),
         currency: json['currency'] as String,
         expenseDate: DateTime.parse(json['expense_date'] as String),
         createdAt: DateTime.parse(json['created_at'] as String),

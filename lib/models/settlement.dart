@@ -1,5 +1,10 @@
 enum SettlementStatus { pendingConfirmation, confirmed }
 
+int _parseAmountMinorUnits(dynamic amount) {
+  final value = amount is num ? amount : double.parse(amount as String);
+  return (value * 100).round();
+}
+
 class Settlement {
   final String id;
   final String? groupId;
@@ -26,8 +31,7 @@ class Settlement {
         groupId: json['group_id'] as String?,
         fromUser: json['from_user'] as String,
         toUser: json['to_user'] as String,
-        amountMinorUnits:
-            (double.parse(json['amount'] as String) * 100).round(),
+        amountMinorUnits: _parseAmountMinorUnits(json['amount']),
         status: (json['status'] as String) == 'confirmed'
             ? SettlementStatus.confirmed
             : SettlementStatus.pendingConfirmation,

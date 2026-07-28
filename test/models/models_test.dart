@@ -38,6 +38,24 @@ void main() {
     expect(expense.isDeleted, isFalse);
   });
 
+  test('Expense fromJson handles amount as a numeric JSON value (PostgREST\'s actual wire format for numeric columns, not a string)', () {
+    final expense = Expense.fromJson({
+      'id': 'e1',
+      'group_id': null,
+      'paid_by': 'u1',
+      'description': 'Coffee',
+      'amount': 250.00,
+      'currency': 'INR',
+      'expense_date': '2026-07-27',
+      'created_at': '2026-07-27T10:00:00Z',
+      'created_by': 'u1',
+      'edited_at': null,
+      'edited_by': null,
+      'deleted_at': null,
+    });
+    expect(expense.amountMinorUnits, 25000);
+  });
+
   test('Settlement fromJson parses status correctly', () {
     final settlement = Settlement.fromJson({
       'id': 's1',
@@ -50,5 +68,19 @@ void main() {
       'confirmed_at': null,
     });
     expect(settlement.status, SettlementStatus.pendingConfirmation);
+  });
+
+  test('Settlement fromJson handles amount as a numeric JSON value (PostgREST\'s actual wire format for numeric columns, not a string)', () {
+    final settlement = Settlement.fromJson({
+      'id': 's1',
+      'group_id': null,
+      'from_user': 'u1',
+      'to_user': 'u2',
+      'amount': 500.00,
+      'status': 'pending_confirmation',
+      'created_at': '2026-07-27T10:00:00Z',
+      'confirmed_at': null,
+    });
+    expect(settlement.amountMinorUnits, 50000);
   });
 }
