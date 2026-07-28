@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meowes_app/core/theme/app_typography.dart';
 
 void main() {
+  // GoogleFonts requires an initialized Flutter binding for async font loading.
   testWidgets('money style is tabular and colored', (WidgetTester tester) async {
     final s = moneyStyle(const Color(0xFF4ADE80), size: 20);
     expect(s.color, const Color(0xFF4ADE80));
