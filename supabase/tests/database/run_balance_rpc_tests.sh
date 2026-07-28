@@ -250,5 +250,24 @@ else
   fail_count=$((fail_count + 1))
 fi
 
+# Every table a repository .stream()s must be in the supabase_realtime
+# publication, or its StreamBuilder shows the initial snapshot and then
+# flips to an error (data -> null) => empty UI. This regression guards all
+# four streamed tables: friendships, group_members, settlements, expenses.
+realtime_json=$(supabase db query --linked --output-format json "
+  select count(*)::int as present
+  from pg_publication_tables
+  where pubname = 'supabase_realtime'
+    and tablename in ('friendships','group_members','settlements','expenses');
+" 2>/dev/null || true)
+realtime_present=$(echo "$realtime_json" | jq -r '.rows[0].present // "null"')
+if [[ "$realtime_present" == "4" ]]; then
+  echo "ok - all streamed tables (friendships, group_members, settlements, expenses) are in supabase_realtime"
+  pass_count=$((pass_count + 1))
+else
+  echo "not ok - some streamed tables missing from supabase_realtime publication (found $realtime_present of 4)"
+  fail_count=$((fail_count + 1))
+fi
+
 echo "$pass_count passed, $fail_count failed"
 [[ "$fail_count" -eq 0 ]]
