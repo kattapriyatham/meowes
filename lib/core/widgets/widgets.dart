@@ -10,6 +10,7 @@ export 'glass/glass_app_bar.dart';
 export 'glass/glass_background.dart';
 export 'glass/glass_button.dart';
 export 'glass/glass_card.dart';
+export 'glass/glass_nav_dock.dart';
 export 'glass/glass_scaffold.dart';
 export 'glass/glass_surface.dart';
 export 'glass/skeleton_loader.dart';
