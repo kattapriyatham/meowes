@@ -1,3 +1,10 @@
+// PostgREST returns numeric columns (share_amount) as JSON numbers, not
+// strings, so parse defensively — same fix as Expense.amount / Settlement.amount.
+int _parseShareMinorUnits(dynamic shareAmount) {
+  final value = shareAmount is num ? shareAmount : double.parse(shareAmount as String);
+  return (value * 100).round();
+}
+
 class ExpenseSplit {
   final String expenseId;
   final String userId;
@@ -12,8 +19,7 @@ class ExpenseSplit {
   factory ExpenseSplit.fromJson(Map<String, dynamic> json) => ExpenseSplit(
         expenseId: json['expense_id'] as String,
         userId: json['user_id'] as String,
-        shareAmountMinorUnits:
-            (double.parse(json['share_amount'] as String) * 100).round(),
+        shareAmountMinorUnits: _parseShareMinorUnits(json['share_amount']),
       );
 
   Map<String, dynamic> toJson() => {
