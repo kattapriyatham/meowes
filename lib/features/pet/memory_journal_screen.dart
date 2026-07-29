@@ -44,7 +44,7 @@ class MemoryJournalScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Hero(
-                      tag: 'activity-image-${memory.activityId}',
+                      tag: 'memory-image-${memory.id}',
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.asset(
