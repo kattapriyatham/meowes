@@ -444,13 +444,14 @@ class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
   Future<void> _pet_() async {
     if (_busy) return;
     setState(() => _busy = true);
-    final pet = await ref.read(petRepositoryProvider).petTheCat();
-    if (!mounted) return;
-    setState(() {
-      _pet = pet;
-      _busy = false;
-    });
-    _showPop('♥');
+    try {
+      final pet = await ref.read(petRepositoryProvider).petTheCat();
+      if (!mounted) return;
+      setState(() => _pet = pet);
+      _showPop('♥');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   IconData _moodIcon(MoodState mood) {
