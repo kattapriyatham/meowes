@@ -13,6 +13,7 @@ import 'package:meowes_app/features/friends/friend_detail_screen.dart';
 import 'package:meowes_app/features/friends/friends_screen.dart';
 import 'package:meowes_app/features/groups/create_group_screen.dart';
 import 'package:meowes_app/features/notifications/notifications_screen.dart';
+import 'package:meowes_app/features/pet/activities_screen.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/friendship.dart';
 import 'package:meowes_app/models/pet.dart';
@@ -156,6 +157,13 @@ class _Header extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
+        SoftIconButton(
+          icon: Icons.pets,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ActivitiesScreen()),
+          ),
+        ),
+        const SizedBox(width: 10),
         SoftIconButton(
           icon: Icons.notifications_none,
           onTap: () => Navigator.of(context).push(
