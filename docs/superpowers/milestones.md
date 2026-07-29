@@ -29,13 +29,17 @@ debt status turned the pet into a guilt trip). Current design:
   Never earned by logging expenses.
 - Mood (visual only, decoupled from money/debts entirely): reflects
   feeding/petting engagement cadence, not balances or settle-up promptness.
-- Coin spending: deferred — cosmetics needing new art per combination are
-  hard to implement with a single static cat image; candidates include
-  color-tint filters, background themes, props beside the cat, and
-  non-visual sinks (nicknames, streak-savers, badges).
-- Monetization: Pro unlocks an exclusive cosmetics catalog only.
-- Open questions: exact mood decay/recovery curve, what coins actually buy,
-  whether petting needs a frequency limit.
+- Coin spending: Activities & Memories. Coins buy handcrafted activities
+  (pre-generated illustration + fixed caption, e.g. "Park Picnic"), each
+  producing a permanent memory in the cat's journal. 3-5 activities
+  rotate at a time; unlocked memories stay forever. Sidesteps the
+  dynamic-cosmetics-art problem since nothing is rendered at runtime.
+  Explicitly excludes wearables/decor/furniture/stat buffs.
+- Monetization: open — the earlier "Pro = cosmetics" plan no longer
+  applies since cosmetics are out of scope; how Pro hooks into Activities
+  & Memories is deferred to sub-project 4.
+- Open questions: exact mood decay/recovery curve, monetization hook,
+  whether petting needs a frequency limit, activity rotation mechanics.
 
 - Spec: `docs/superpowers/specs/2026-07-29-pet-coin-mood-companion-design.md`
 

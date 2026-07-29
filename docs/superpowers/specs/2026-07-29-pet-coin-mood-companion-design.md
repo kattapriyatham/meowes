@@ -44,34 +44,88 @@ The exact decay/recovery curve (how fast mood drops on neglect, how fast it
 recovers on renewed care) is an open question, carried over from the
 original brief.
 
-## 3. Coin sink (shop) — deferred
+## 3. Coin sink — Activities & Memories
 
-What coins actually buy is not decided in this spec. Cosmetics requiring
-new art per combination (skins/outfits on the cat) were flagged as hard to
-implement, since the app currently has a single static cat image and
-dynamically rendering new combinations would need real art production.
-Candidate directions discussed but not committed to:
+Resolves the earlier "what do coins buy" open question. Coins are spent on
+**Activities** — time spent with the companion cat. Each activity produces
+a permanent **Memory**: a pre-generated illustration plus a short caption,
+never a wearable, room decoration, or stat boost. This sidesteps the
+dynamic-art-rendering problem entirely, since every activity is handcrafted
+(fixed art + fixed caption) rather than composed at runtime from
+combinable pieces.
 
-- Color/fur tint filters over the existing cat image (no new art, code-only)
-- Background/room theme swaps behind the cat (cat art untouched)
-- Props placed beside (not on) the cat — bowl, toy, blanket
-- Non-visual sinks — nicknames, streak-savers, badges
+**Design principles**
+- Activities are the primary (only) coin sink.
+- Activities are optional and never affect expense-sharing functionality.
+- No gameplay advantages or stat boosts, no real-money coin purchases.
+- Every activity uses pre-generated artwork and predefined captions —
+  nothing rendered dynamically.
+- Activities create lasting memories rather than consumable items.
 
-This is tracked as a follow-up decision, not a blocker for the rest of this
-spec.
+**User flow**
+1. User earns coins through the mechanics in Section 1.
+2. User opens the Activities section from the pet card.
+3. A small set of available activities is displayed.
+4. User selects an activity and spends the required coins.
+5. The activity plays immediately (or after a short animation).
+6. A memory is added to the cat's journal.
+
+**Activity structure** — each activity has a name, coin cost, illustration
+(pre-generated asset), short caption, and category.
+
+Example — *Park Picnic*: 60 coins, category Outdoors, image
+`park_picnic_01.webp`, caption "We spent the afternoon under a big tree. I
+almost stole your sandwich."
+
+**Categories**: Walks, Relaxation, Grooming, Outdoor Adventures, Seasonal
+Events, Funny Moments, Special Occasions. Examples: Morning Walk, Park
+Picnic, Spa Day, Beach Trip, Watching the Rain, Camping, Birthday
+Celebration, Chased a Butterfly.
+
+**Availability**: only 3–5 activities available at a time, rotating
+periodically (e.g. daily) to keep the experience fresh. Previously
+unlocked memories remain permanently accessible regardless of rotation.
+
+**Memory journal**: every completed activity is stored in a chronological
+journal. Each memory entry contains the activity image, name, caption, and
+completion date. The journal is the history of the companion's life and
+serves as the long-term progression system (in place of
+growth/evolution milestones, which were dropped earlier in this
+brainstorm).
+
+**Economy guidelines**
+- Low-tier: 20–50 coins
+- Mid-tier: 60–150 coins
+- Premium: 200–500 coins
+- Seasonal/milestone: 500+ coins
+
+Coins are never required for basic pet interactions (feeding, petting) —
+those stay free per Section 1.
+
+**Future extensions** (not in scope now): seasonal activity rotations,
+limited-time festival activities, group milestone activities (shared
+unlocks after group achievements), achievement rewards for completing
+activity collections, personality-based captions for the same activity.
+
+**Out of scope**: room decoration, wearable cosmetics, furniture, pet
+stats/gameplay buffs, coin purchases with real money, user-generated
+customization.
 
 ## 4. Monetization
 
-Pro subscription unlocks an exclusive cosmetics catalog, consistent with
-the existing monetization draft (sub-project 4 in `milestones.md`). No
-pay-to-earn-coins mechanic, no gameplay-affecting purchases of any kind —
-matches the original brief's constraint.
+Open. The earlier plan ("Pro unlocks an exclusive cosmetics catalog") no
+longer applies, since cosmetics/wearables/decor are explicitly out of
+scope for Activities & Memories. How Pro/monetization hooks into this
+system — exclusive premium activities, more activity slots, faster
+rotation, journal perks, or something else — is deferred to the dedicated
+monetization sub-project (#4 in `milestones.md`).
 
 ## Open questions (parked, not blocking implementation of the core loop)
 
-- What coins actually buy (resolved when sub-project 6, Cosmetics store, or
-  a dedicated follow-up spec picks this up)
+- Monetization hook for Activities & Memories (see Section 4)
 - Mood decay/recovery curve specifics (rate of decline on neglect, rate of
   recovery on renewed care)
 - Whether petting needs a frequency limit or diminishing returns, or can
   stay unbounded since it grants no coins
+- Exact activity rotation mechanics (per-user vs. global, rotation cadence
+  beyond "e.g. daily")
