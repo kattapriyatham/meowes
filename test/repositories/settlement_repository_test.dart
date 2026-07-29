@@ -60,29 +60,26 @@ class _FakeInsertResult extends Fake
   }
 }
 
-class _FakeUpdateSelectResult extends Fake
-    implements PostgrestTransformBuilder<PostgrestList> {
-  final PostgrestList rows;
-  _FakeUpdateSelectResult(this.rows);
+// Fake for a single-row RPC result (confirm_settlement_and_award_coins
+// returns `settlements`, i.e. a single row), modeled on
+// pet_repository_test.dart's _FakeRpcResult. Supports both a success value
+// and an error path so PostgrestException propagation can be tested too.
+class _FakeRpcResult extends Fake implements PostgrestFilterBuilder<dynamic> {
+  final dynamic _data;
+  final Object? _error;
+  _FakeRpcResult(this._data) : _error = null;
+  _FakeRpcResult.error(this._error) : _data = null;
 
   @override
-  Future<U> then<U>(FutureOr<U> Function(PostgrestList) onValue,
-      {Function? onError}) {
-    return Future.value(rows).then(onValue, onError: onError);
+  Future<U> then<U>(
+    FutureOr<U> Function(dynamic value) onValue, {
+    Function? onError,
+  }) {
+    if (_error != null) {
+      return Future<dynamic>.error(_error).then(onValue, onError: onError);
+    }
+    return Future<dynamic>.value(_data).then(onValue, onError: onError);
   }
-}
-
-class _FakeUpdateResult extends Fake
-    implements PostgrestFilterBuilder<PostgrestMap> {
-  final PostgrestList rows;
-  _FakeUpdateResult(this.rows);
-
-  @override
-  PostgrestFilterBuilder<PostgrestMap> eq(String column, Object value) => this;
-
-  @override
-  PostgrestTransformBuilder<PostgrestList> select([String columns = '*']) =>
-      _FakeUpdateSelectResult(rows);
 }
 
 void main() {
@@ -125,34 +122,51 @@ void main() {
     expect(captured['amount'], '500.00');
   });
 
-  test('confirmSettlement succeeds when the update actually affects a row', () async {
+  test('confirmSettlement calls the RPC and succeeds on a returned row', () async {
     final client = MockSupabaseClient();
-    final table = MockQueryBuilder();
 
-    when(() => client.from('settlements')).thenAnswer((_) => table);
-    when(() => table.update(any())).thenAnswer(
-      (_) => _FakeUpdateResult([
-        {'id': 's1', 'status': 'confirmed'}
-      ]),
+    when(
+      () => client.rpc(
+        'confirm_settlement_and_award_coins',
+        params: {'p_settlement_id': 's1'},
+      ),
+    ).thenAnswer(
+      (_) => _FakeRpcResult({'id': 's1', 'status': 'confirmed'}),
     );
 
     final repo = SettlementRepository(client);
     await repo.confirmSettlement('s1');
     // No exception thrown means success.
+    verify(
+      () => client.rpc(
+        'confirm_settlement_and_award_coins',
+        params: {'p_settlement_id': 's1'},
+      ),
+    ).called(1);
   });
 
-  test('confirmSettlement throws when RLS blocks the update (zero rows affected)', () async {
-    // Regression test: without checking the returned rows, an unauthorized
-    // confirm (e.g. the payer trying to self-confirm, blocked by
-    // settlements_update_payee_confirms) would silently succeed as a
-    // Future<void> even though nothing changed in the database.
+  test('confirmSettlement propagates PostgrestException when not authorized', () async {
+    // Regression test: an unauthorized confirm (e.g. the payer trying to
+    // self-confirm) now surfaces as a PostgrestException raised by the RPC
+    // (`not_authorized`), and confirmSettlement must let it propagate
+    // unchanged rather than swallowing or transforming it.
     final client = MockSupabaseClient();
-    final table = MockQueryBuilder();
 
-    when(() => client.from('settlements')).thenAnswer((_) => table);
-    when(() => table.update(any())).thenAnswer((_) => _FakeUpdateResult([]));
+    when(
+      () => client.rpc(
+        'confirm_settlement_and_award_coins',
+        params: {'p_settlement_id': 's1'},
+      ),
+    ).thenAnswer(
+      (_) => _FakeRpcResult.error(
+        PostgrestException(message: 'not_authorized'),
+      ),
+    );
 
     final repo = SettlementRepository(client);
-    expect(() => repo.confirmSettlement('s1'), throwsStateError);
+    expect(
+      () => repo.confirmSettlement('s1'),
+      throwsA(isA<PostgrestException>()),
+    );
   });
 }

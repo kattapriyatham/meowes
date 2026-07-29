@@ -26,21 +26,13 @@ class SettlementRepository {
   }
 
   Future<void> confirmSettlement(String settlementId) async {
-    // Without .select(), RLS silently blocking an unauthorized confirm
-    // (e.g. the payer trying to self-confirm) would return success with
-    // zero rows actually changed — checking the returned row makes that
-    // failure visible instead of a no-op that looks like it worked.
-    final rows = await _client
-        .from('settlements')
-        .update({
-          'status': 'confirmed',
-          'confirmed_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', settlementId)
-        .select();
-    if (rows.isEmpty) {
-      throw StateError('Unable to confirm this settlement');
-    }
+    // The RPC transitions status to 'confirmed' AND credits the payer's
+    // pet coins atomically; not_authorized/settlement_not_found surface
+    // as PostgrestException the same way an empty-rows update used to.
+    await _client.rpc(
+      'confirm_settlement_and_award_coins',
+      params: {'p_settlement_id': settlementId},
+    );
   }
 
   Stream<List<Settlement>> watchPendingForMe() {
