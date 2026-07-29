@@ -25,6 +25,50 @@
 - Every new table gets RLS enabled with named, scoped policies, following `docs/superpowers/specs/2026-07-27-core-expense-splitting-design.md`'s established conventions (see `supabase/migrations/0001_init_schema.sql`).
 - New migrations use the `YYYYMMDDHHMMSS_description.sql` naming convention (today: `20260729`).
 
+## UI/UX Design Guidelines
+
+Sourced via the ui-ux-pro-max design skill, filtered to what's consistent with
+the app's existing warm-paper `GlassTokens` system — its default recommendation
+for this feature type (claymorphism, orange/blue palette) was **not** adopted,
+since introducing a second palette would fight the "feels like the same app"
+goal. Only the token-agnostic interaction/accessibility principles apply:
+
+- **No new colors.** Mood is communicated by mapping `MoodState` onto tokens
+  that already exist: `happy`/`ecstatic` tint toward `t.positive`, `sad` tints
+  toward `t.negative` (both used at low alpha, as a soft border/glow — never
+  full-saturation), `content` stays neutral (`t.textSecondary`/no tint). No new
+  hex values anywhere in this feature.
+- **Feedback proportional to frequency.** A `SnackBar` per tap is too heavy for
+  actions users repeat often (feed, pet) — reserve `SnackBar` for infrequent,
+  meaningful events (daily check-in, feed cooldown, insufficient coins).
+  Frequent actions get a lightweight inline animated indicator instead (a
+  small "+2" that fades/rises next to the tapped button, `AnimatedSwitcher`/
+  implicit animation, 150–300ms) — "success feedback" without interrupting.
+- **Press feedback on every tappable element.** Feed/pet icon buttons and
+  activity redeem buttons get an `AnimatedScale` (~0.92 on press, per standard
+  active-state guidance) so taps feel acknowledged immediately, not just after
+  the network round-trip resolves.
+- **Icon-only buttons need labels.** `SoftIconButton` for feed/pet has no text
+  — wrap each in `Tooltip`/`Semantics` with a real label ("Feed", "Pet") so
+  screen readers and long-press hints both work. Existing `SoftIconButton`
+  default size (48) already clears the 44×44 minimum touch target.
+- **Respect reduced motion.** The codebase already has `motionReduced(context)`
+  (`lib/core/a11y/accessibility.dart`, used by `SkeletonLoader`) — any new
+  implicit/explicit animation in this feature checks it and skips/shortens
+  the animation when true, rather than introducing a second convention.
+- **Proactive affordance over reactive error.** On the Activities screen, an
+  activity the user can't afford should look visibly disabled (dimmed
+  `PillButton`, cost text muted) rather than looking identical to an
+  affordable one and only failing after tap — catching
+  `InsufficientCoinsException` stays as a safety net, not the primary signal.
+- **Journal stays a timeline, not a grid.** The spec calls memories a
+  "chronological journal" — a single-column reverse-chronological list (as
+  already planned) matches that narrative framing better than a grid, which
+  would read as a shop/gallery instead of a diary.
+- **Flutter list hygiene.** `ListView.builder`/`ListView.separated` (already
+  planned) plus a `ValueKey` per item for the memory journal list, so item
+  state survives list reordering/rebuilds as new memories are added.
+
 ---
 
 ### Task 1: Database schema — `pets`, `activities`, `pet_memories` tables
@@ -892,13 +936,21 @@ git commit -m "feat: award settle-up coins atomically on settlement confirmation
 - [ ] **Step 1: Add the new imports to the top of `home_screen.dart`**
 
 ```dart
+import 'package:meowes_app/core/a11y/accessibility.dart';
 import 'package:meowes_app/models/pet.dart';
 import 'package:meowes_app/repositories/pet_repository.dart';
 ```
 
-(`flutter_riverpod`'s `ConsumerWidget`/`ConsumerStatefulWidget`, `Theme`, and `GlassTokens` are already imported in this file since `HomeScreen` itself is a `ConsumerWidget`.)
+(`flutter_riverpod`'s `ConsumerWidget`/`ConsumerStatefulWidget`, `Theme`, and `GlassTokens` are already imported in this file since `HomeScreen` itself is a `ConsumerWidget`. `motionReduced` comes from `lib/core/a11y/accessibility.dart`, already used by `SkeletonLoader` — reuse the same helper rather than introducing a second reduced-motion check.)
 
 - [ ] **Step 2: Replace `_CatPlaceholder` with a mood-aware, interactive `_PetCatWidget`**
+
+Design notes (see "UI/UX Design Guidelines" above): mood is shown as a soft
+colored glow behind the cat using only existing `GlassTokens` (no new
+colors), feed/pet give an inline "+N"/"♥" pop next to the coin counter
+instead of a `SnackBar` (too heavy for a frequently-repeated action), the
+check-in `SnackBar` stays since it's once-a-day, and both icon buttons get a
+`Tooltip` label since they're icon-only.
 
 ```dart
 // ── Pet cat, mood-aware and interactive ────────────────────────────────
@@ -913,6 +965,7 @@ class _PetCatWidget extends ConsumerStatefulWidget {
 class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
   Pet? _pet;
   bool _busy = false;
+  String? _popText;
 
   @override
   void initState() {
@@ -940,6 +993,13 @@ class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
     }
   }
 
+  void _showPop(String text) {
+    setState(() => _popText = text);
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) setState(() => _popText = null);
+    });
+  }
+
   Future<void> _feed() async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -947,6 +1007,7 @@ class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
       final pet = await ref.read(petRepositoryProvider).feed();
       if (!mounted) return;
       setState(() => _pet = pet);
+      _showPop('+2');
     } on FeedCooldownException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -966,6 +1027,7 @@ class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
       _pet = pet;
       _busy = false;
     });
+    _showPop('♥');
   }
 
   IconData _moodIcon(MoodState mood) {
@@ -981,46 +1043,100 @@ class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
     }
   }
 
+  // Mood maps onto existing semantic tokens only — no new colors.
+  Color _moodTint(GlassTokens t, MoodState mood) {
+    switch (mood) {
+      case MoodState.sad:
+        return t.negative;
+      case MoodState.content:
+        return t.textSecondary;
+      case MoodState.happy:
+      case MoodState.ecstatic:
+        return t.positive;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
     final pet = _pet;
+    final reduceMotion = motionReduced(context);
+    final glowDuration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 400);
+    final popDuration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 200);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (pet != null)
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.centerRight,
             children: [
-              Icon(_moodIcon(pet.mood), size: 16, color: t.textSecondary),
-              const SizedBox(width: 4),
-              Icon(Icons.paid, size: 14, color: t.textMuted),
-              const SizedBox(width: 2),
-              Text('${pet.coins}',
-                  style: TextStyle(color: t.textMuted, fontSize: 12)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(_moodIcon(pet.mood), size: 16, color: t.textSecondary),
+                  const SizedBox(width: 4),
+                  Icon(Icons.paid, size: 14, color: t.textMuted),
+                  const SizedBox(width: 2),
+                  Text('${pet.coins}',
+                      style: TextStyle(color: t.textMuted, fontSize: 12)),
+                ],
+              ),
+              Positioned(
+                top: -16,
+                child: AnimatedOpacity(
+                  opacity: _popText == null ? 0 : 1,
+                  duration: popDuration,
+                  child: Text(
+                    _popText ?? '',
+                    style: TextStyle(
+                      color: t.positive,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-        Image.asset(
-          'assets/images/cat.png',
-          width: widget.width,
-          fit: BoxFit.fitWidth,
-          errorBuilder: (context, error, stack) => Container(
+        AnimatedContainer(
+          duration: glowDuration,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: pet == null
+                ? const []
+                : [
+                    BoxShadow(
+                      color: _moodTint(t, pet.mood).withValues(alpha: 0.25),
+                      blurRadius: 24,
+                      spreadRadius: 2,
+                    ),
+                  ],
+          ),
+          child: Image.asset(
+            'assets/images/cat.png',
             width: widget.width,
-            height: widget.width * 0.7,
-            decoration: BoxDecoration(
-              color: t.textPrimary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(26),
-            ),
-            alignment: Alignment.center,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.pets, size: widget.width * 0.22, color: t.textSecondary),
-                const SizedBox(height: 6),
-                Text('cat', style: TextStyle(color: t.textMuted, fontSize: 12)),
-              ],
+            fit: BoxFit.fitWidth,
+            errorBuilder: (context, error, stack) => Container(
+              width: widget.width,
+              height: widget.width * 0.7,
+              decoration: BoxDecoration(
+                color: t.textPrimary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(26),
+              ),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.pets, size: widget.width * 0.22, color: t.textSecondary),
+                  const SizedBox(height: 6),
+                  Text('cat', style: TextStyle(color: t.textMuted, fontSize: 12)),
+                ],
+              ),
             ),
           ),
         ),
@@ -1028,14 +1144,20 @@ class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SoftIconButton(
-                icon: Icons.restaurant,
-                onTap: _busy ? () {} : _feed,
+              Tooltip(
+                message: 'Feed',
+                child: SoftIconButton(
+                  icon: Icons.restaurant,
+                  onTap: _busy ? () {} : _feed,
+                ),
               ),
               const SizedBox(width: 8),
-              SoftIconButton(
-                icon: Icons.front_hand,
-                onTap: _busy ? () {} : _pet_,
+              Tooltip(
+                message: 'Pet',
+                child: SoftIconButton(
+                  icon: Icons.front_hand,
+                  onTap: _busy ? () {} : _pet_,
+                ),
               ),
             ],
           ),
@@ -1051,7 +1173,7 @@ In `_BalanceCard` (around line 300), replace `_CatPlaceholder(width: 200)` with 
 
 - [ ] **Step 4: Manually verify in a running app**
 
-Run: `scripts/run_dev.sh` (per `README.md`), open the home screen. Expected: mood icon + coin count appear above the cat, a snackbar shows "Daily check-in: +5 coins" once per day, tapping the feed icon increases the coin count and mood, tapping again within 3 hours shows the cooldown snackbar, tapping the pet icon bumps mood with no coin change.
+Run: `scripts/run_dev.sh` (per `README.md`), open the home screen. Expected: mood icon + coin count appear above the cat, a soft colored glow appears behind the cat tinted toward green (happy/ecstatic) or muted red (sad), a snackbar shows "Daily check-in: +5 coins" once per day, tapping the feed icon shows a brief "+2" pop and increases the coin count and mood, tapping again within 3 hours shows the cooldown snackbar, tapping the pet icon shows a "♥" pop and bumps mood with no coin change, long-pressing either icon shows its tooltip ("Feed"/"Pet"). With OS-level reduced-motion enabled, the glow and pop appear/disappear instantly with no fade.
 
 - [ ] **Step 5: Commit**
 
@@ -1073,6 +1195,12 @@ git commit -m "feat: interactive mood-aware pet cat on home screen"
 - Produces: `ActivitiesScreen` (no-arg `ConsumerWidget` constructor), pushed via `MaterialPageRoute`.
 
 - [ ] **Step 1: Write the screen**
+
+Design notes (see "UI/UX Design Guidelines" above): an activity the user
+can't afford is dimmed and its cost pill shows muted colors *before* any tap
+— catching `InsufficientCoinsException` is a safety net, not the primary
+signal. The activity thumbnail carries a `Hero` tag so tapping through to
+the Memory journal (Task 9) that image continues instead of jump-cutting.
 
 ```dart
 import 'package:flutter/material.dart';
@@ -1174,46 +1302,56 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen> {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
               final activity = activities[i];
-              return SoftCard(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        activity.imageAsset,
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stack) => Container(
-                          width: 64,
-                          height: 64,
-                          color: t.textPrimary.withValues(alpha: 0.05),
-                          alignment: Alignment.center,
-                          child: Icon(Icons.image_outlined, color: t.textMuted),
+              final affordable = _coins >= activity.coinCost;
+              return Opacity(
+                opacity: affordable ? 1 : 0.5,
+                child: SoftCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Hero(
+                        tag: 'activity-image-${activity.id}',
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            activity.imageAsset,
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) => Container(
+                              width: 64,
+                              height: 64,
+                              color: t.textPrimary.withValues(alpha: 0.05),
+                              alignment: Alignment.center,
+                              child: Icon(Icons.image_outlined, color: t.textMuted),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(activity.name,
-                              style: TextStyle(
-                                  color: t.textPrimary,
-                                  fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 2),
-                          Text(activity.category,
-                              style: TextStyle(color: t.textMuted, fontSize: 12)),
-                        ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(activity.name,
+                                style: TextStyle(
+                                    color: t.textPrimary,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text(activity.category,
+                                style: TextStyle(color: t.textMuted, fontSize: 12)),
+                          ],
+                        ),
                       ),
-                    ),
-                    PillButton(
-                      label: '${activity.coinCost}',
-                      onTap: _redeeming ? null : () => _redeem(activity),
-                    ),
-                  ],
+                      PillButton(
+                        label: '${activity.coinCost}',
+                        primary: affordable,
+                        onTap: (_redeeming || !affordable)
+                            ? null
+                            : () => _redeem(activity),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -1243,7 +1381,7 @@ Add the import: `import 'package:meowes_app/features/pet/activities_screen.dart'
 
 - [ ] **Step 3: Manually verify**
 
-Run: `scripts/run_dev.sh`, tap the new pets icon on home. Expected: today's 3-5 activities appear with images (or the icon fallback, since art assets don't exist yet), tapping one with enough coins shows the caption dialog and decrements the displayed coin count, tapping one you can't afford shows the insufficient-coins snackbar.
+Run: `scripts/run_dev.sh`, tap the new pets icon on home. Expected: today's 3-5 activities appear with images (or the icon fallback, since art assets don't exist yet); activities costing more than your current coin balance appear visibly dimmed with a muted cost pill *before* you tap them; tapping an affordable one shows the caption dialog and decrements the displayed coin count; tapping one you can't afford is a no-op on the dimmed button (the insufficient-coins snackbar is the fallback path, reachable if the balance changes between load and tap).
 
 - [ ] **Step 4: Commit**
 
@@ -1265,6 +1403,15 @@ git commit -m "feat: add Activities screen for spending pet coins"
 - Produces: `MemoryJournalScreen` (no-arg `ConsumerWidget` constructor), pushed via `MaterialPageRoute`.
 
 - [ ] **Step 1: Write the screen**
+
+Design notes (see "UI/UX Design Guidelines" above): a single-column
+reverse-chronological list, not a grid — this is a diary, not a shop. Each
+row gets a `ValueKey` so item state survives rebuilds as new memories are
+added, and reuses the `'activity-image-${activityId}'` `Hero` tag from
+Task 8 — if the user navigates here right after redeeming (while that
+activity is still visible on the Activities screen underneath), the image
+continues instead of jump-cutting. If it's not still visible there, the
+`Hero` degrades to a normal push with no animation — never a hard failure.
 
 ```dart
 import 'package:flutter/material.dart';
@@ -1307,23 +1454,27 @@ class MemoryJournalScreen extends ConsumerWidget {
             itemBuilder: (context, i) {
               final memory = memories[i];
               return SoftCard(
+                key: ValueKey(memory.id),
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        memory.imageAsset,
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stack) => Container(
+                    Hero(
+                      tag: 'activity-image-${memory.activityId}',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          memory.imageAsset,
                           width: 64,
                           height: 64,
-                          color: t.textPrimary.withValues(alpha: 0.05),
-                          alignment: Alignment.center,
-                          child: Icon(Icons.photo_outlined, color: t.textMuted),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stack) => Container(
+                            width: 64,
+                            height: 64,
+                            color: t.textPrimary.withValues(alpha: 0.05),
+                            alignment: Alignment.center,
+                            child: Icon(Icons.photo_outlined, color: t.textMuted),
+                          ),
                         ),
                       ),
                     ),
