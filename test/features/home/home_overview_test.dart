@@ -8,13 +8,16 @@ import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/features/home/home_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart';
 import 'package:meowes_app/features/groups/create_group_screen.dart';
+import 'package:meowes_app/models/pet.dart';
 import 'package:meowes_app/repositories/friend_repository.dart';
 import 'package:meowes_app/repositories/group_repository.dart';
+import 'package:meowes_app/repositories/pet_repository.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 class MockGoTrueClient extends Mock implements GoTrueClient {}
 class MockFriendRepository extends Mock implements FriendRepository {}
 class MockGroupRepository extends Mock implements GroupRepository {}
+class MockPetRepository extends Mock implements PetRepository {}
 
 void main() {
   setUpAll(() {
@@ -26,6 +29,7 @@ void main() {
     final mockAuth = MockGoTrueClient();
     final mockFriendRepo = MockFriendRepository();
     final mockGroupRepo = MockGroupRepository();
+    final mockPetRepo = MockPetRepository();
 
     when(() => mockClient.auth).thenReturn(mockAuth);
     when(() => mockAuth.currentUser).thenReturn(
@@ -45,6 +49,17 @@ void main() {
     when(() => mockGroupRepo.watchMyGroups()).thenAnswer(
       (_) => Stream.value([]),
     );
+    when(() => mockPetRepo.getOrCreatePet()).thenAnswer(
+      (_) async => Pet(
+        userId: 'test-user-id',
+        coins: 0,
+        moodScore: 50,
+        lastCareAt: DateTime.parse('2026-07-27T00:00:00Z'),
+        feedStreakDays: 0,
+      ),
+    );
+    when(() => mockPetRepo.dailyCheckIn())
+        .thenThrow(AlreadyCheckedInException());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -52,6 +67,7 @@ void main() {
           supabaseClientProvider.overrideWithValue(mockClient),
           friendRepositoryProvider.overrideWithValue(mockFriendRepo),
           groupRepositoryProvider.overrideWithValue(mockGroupRepo),
+          petRepositoryProvider.overrideWithValue(mockPetRepo),
         ],
         child: MaterialApp(theme: AppTheme.dark, home: const HomeScreen()),
       ),

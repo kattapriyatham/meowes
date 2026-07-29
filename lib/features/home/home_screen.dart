@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:meowes_app/core/a11y/accessibility.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/app_typography.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
@@ -14,7 +15,9 @@ import 'package:meowes_app/features/groups/create_group_screen.dart';
 import 'package:meowes_app/features/notifications/notifications_screen.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/friendship.dart';
+import 'package:meowes_app/models/pet.dart';
 import 'package:meowes_app/repositories/friend_repository.dart';
+import 'package:meowes_app/repositories/pet_repository.dart';
 
 /// Home tab — warm "paper" dashboard: greeting header, an overall-balance
 /// card (with the Meowes cat + primary actions), and a Balances preview.
@@ -361,7 +364,7 @@ class _BalanceCard extends StatelessWidget {
         Positioned(
           top: 10,
           right: -6,
-          child: _CatPlaceholder(width: 200),
+          child: _PetCatWidget(width: 200),
         ),
         Positioned(
           top: 4,
@@ -373,36 +376,215 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
-/// The Meowes cat, sized by width so it drapes over the Settle-up button
-/// (drop assets/images/cat.png to replace the placeholder).
-class _CatPlaceholder extends StatelessWidget {
+// ── Pet cat, mood-aware and interactive ────────────────────────────────
+class _PetCatWidget extends ConsumerStatefulWidget {
   final double width;
-  const _CatPlaceholder({required this.width});
+  const _PetCatWidget({required this.width});
+
+  @override
+  ConsumerState<_PetCatWidget> createState() => _PetCatWidgetState();
+}
+
+class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
+  Pet? _pet;
+  bool _busy = false;
+  String? _popText;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAndCheckIn();
+  }
+
+  Future<void> _loadAndCheckIn() async {
+    final repo = ref.read(petRepositoryProvider);
+    final pet = await repo.getOrCreatePet();
+    if (!mounted) return;
+    setState(() => _pet = pet);
+
+    try {
+      final afterCheckIn = await repo.dailyCheckIn();
+      if (!mounted) return;
+      setState(() => _pet = afterCheckIn);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Daily check-in: +5 coins')),
+        );
+      }
+    } on AlreadyCheckedInException {
+      // Already checked in today — silent no-op.
+    }
+  }
+
+  void _showPop(String text) {
+    setState(() => _popText = text);
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) setState(() => _popText = null);
+    });
+  }
+
+  Future<void> _feed() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final pet = await ref.read(petRepositoryProvider).feed();
+      if (!mounted) return;
+      setState(() => _pet = pet);
+      _showPop('+2');
+    } on FeedCooldownException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Already fed recently — try again later')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pet_() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final pet = await ref.read(petRepositoryProvider).petTheCat();
+    if (!mounted) return;
+    setState(() {
+      _pet = pet;
+      _busy = false;
+    });
+    _showPop('♥');
+  }
+
+  IconData _moodIcon(MoodState mood) {
+    switch (mood) {
+      case MoodState.sad:
+        return Icons.sentiment_very_dissatisfied;
+      case MoodState.content:
+        return Icons.sentiment_neutral;
+      case MoodState.happy:
+        return Icons.sentiment_satisfied;
+      case MoodState.ecstatic:
+        return Icons.sentiment_very_satisfied;
+    }
+  }
+
+  // Mood maps onto existing semantic tokens only — no new colors.
+  Color _moodTint(GlassTokens t, MoodState mood) {
+    switch (mood) {
+      case MoodState.sad:
+        return t.negative;
+      case MoodState.content:
+        return t.textSecondary;
+      case MoodState.happy:
+      case MoodState.ecstatic:
+        return t.positive;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
-    return Image.asset(
-      'assets/images/cat.png',
-      width: width,
-      fit: BoxFit.fitWidth,
-      errorBuilder: (context, error, stack) => Container(
-        width: width,
-        height: width * 0.7,
-        decoration: BoxDecoration(
-          color: t.textPrimary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(26),
+    final pet = _pet;
+    final reduceMotion = motionReduced(context);
+    final glowDuration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 400);
+    final popDuration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 200);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (pet != null)
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.centerRight,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(_moodIcon(pet.mood), size: 16, color: t.textSecondary),
+                  const SizedBox(width: 4),
+                  Icon(Icons.paid, size: 14, color: t.textMuted),
+                  const SizedBox(width: 2),
+                  Text('${pet.coins}',
+                      style: TextStyle(color: t.textMuted, fontSize: 12)),
+                ],
+              ),
+              Positioned(
+                top: -16,
+                child: AnimatedOpacity(
+                  opacity: _popText == null ? 0 : 1,
+                  duration: popDuration,
+                  child: Text(
+                    _popText ?? '',
+                    style: TextStyle(
+                      color: t.positive,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        AnimatedContainer(
+          duration: glowDuration,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: pet == null
+                ? const []
+                : [
+                    BoxShadow(
+                      color: _moodTint(t, pet.mood).withValues(alpha: 0.25),
+                      blurRadius: 24,
+                      spreadRadius: 2,
+                    ),
+                  ],
+          ),
+          child: Image.asset(
+            'assets/images/cat.png',
+            width: widget.width,
+            fit: BoxFit.fitWidth,
+            errorBuilder: (context, error, stack) => Container(
+              width: widget.width,
+              height: widget.width * 0.7,
+              decoration: BoxDecoration(
+                color: t.textPrimary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(26),
+              ),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.pets, size: widget.width * 0.22, color: t.textSecondary),
+                  const SizedBox(height: 6),
+                  Text('cat', style: TextStyle(color: t.textMuted, fontSize: 12)),
+                ],
+              ),
+            ),
+          ),
         ),
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.pets, size: width * 0.22, color: t.textSecondary),
-            const SizedBox(height: 6),
-            Text('cat', style: TextStyle(color: t.textMuted, fontSize: 12)),
-          ],
-        ),
-      ),
+        if (pet != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Tooltip(
+                message: 'Feed',
+                child: SoftIconButton(
+                  icon: Icons.restaurant,
+                  onTap: _busy ? () {} : _feed,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Pet',
+                child: SoftIconButton(
+                  icon: Icons.front_hand,
+                  onTap: _busy ? () {} : _pet_,
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }
