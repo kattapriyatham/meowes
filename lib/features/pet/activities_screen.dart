@@ -36,8 +36,9 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen> {
     if (_redeeming) return;
     setState(() => _redeeming = true);
     try {
-      final memory =
-          await ref.read(petRepositoryProvider).redeemActivity(activity.id);
+      final memory = await ref
+          .read(petRepositoryProvider)
+          .redeemActivity(activity.id);
       if (!mounted) return;
       setState(() => _coins -= activity.coinCost);
       await showDialog<void>(
@@ -55,9 +56,13 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen> {
       );
     } on InsufficientCoinsException {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Not enough coins for this activity yet')),
-      );
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Not enough coins for this activity yet'),
+          ),
+        );
     } finally {
       if (mounted) setState(() => _redeeming = false);
     }
@@ -81,86 +86,104 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Center(
-              child: Text('$_coins coins',
-                  style: TextStyle(color: t.textSecondary)),
+              child: Text(
+                '$_coins coins',
+                style: TextStyle(color: t.textSecondary),
+              ),
             ),
           ),
         ],
       ),
-      body: FutureBuilder<List<Activity>>(
-        future: _activitiesFuture,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const SkeletonLoader();
-          }
-          final activities = snapshot.data!;
-          if (activities.isEmpty) {
-            return const EmptyStateBox(
-              icon: Icons.pets,
-              message: 'No activities available right now',
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: activities.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, i) {
-              final activity = activities[i];
-              final affordable = _coins >= activity.coinCost;
-              return Opacity(
-                opacity: affordable ? 1 : 0.5,
-                child: SoftCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Hero(
-                        tag: 'activity-image-${activity.id}',
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            activity.imageAsset,
-                            width: 64,
-                            height: 64,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stack) => Container(
+      body: SafeArea(
+        child: FutureBuilder<List<Activity>>(
+          future: _activitiesFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const SkeletonLoader();
+            }
+            final activities = snapshot.data!;
+            if (activities.isEmpty) {
+              return const EmptyStateBox(
+                icon: Icons.pets,
+                message: 'No activities available right now',
+              );
+            }
+            return ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: activities.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, i) {
+                final activity = activities[i];
+                final affordable = _coins >= activity.coinCost;
+                return Opacity(
+                  opacity: affordable ? 1 : 0.6,
+                  child: SoftCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Hero(
+                          tag: 'activity-image-${activity.id}',
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              activity.imageAsset,
                               width: 64,
                               height: 64,
-                              color: t.textPrimary.withValues(alpha: 0.05),
-                              alignment: Alignment.center,
-                              child: Icon(Icons.image_outlined, color: t.textMuted),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stack) =>
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    color: t.textPrimary.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.image_outlined,
+                                      color: t.textSecondary,
+                                    ),
+                                  ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(activity.name,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                activity.name,
                                 style: TextStyle(
-                                    color: t.textPrimary,
-                                    fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 2),
-                            Text(activity.category,
-                                style: TextStyle(color: t.textMuted, fontSize: 12)),
-                          ],
+                                  color: t.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                activity.category,
+                                style: TextStyle(
+                                  color: t.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      PillButton(
-                        label: '${activity.coinCost}',
-                        primary: affordable,
-                        onTap: (_redeeming || !affordable)
-                            ? null
-                            : () => _redeem(activity),
-                      ),
-                    ],
+                        PillButton(
+                          label: '${activity.coinCost}',
+                          primary: affordable,
+                          onTap: (_redeeming || !affordable)
+                              ? null
+                              : () => _redeem(activity),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-          );
-        },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

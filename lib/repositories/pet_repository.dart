@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/models/activity.dart';
+import 'package:meowes_app/models/food.dart';
 import 'package:meowes_app/models/pet.dart';
 import 'package:meowes_app/models/pet_memory.dart';
 
@@ -14,9 +15,12 @@ class PetRepository {
     return Pet.fromJson(row as Map<String, dynamic>);
   }
 
-  Future<Pet> feed() async {
+  Future<Pet> feed(FoodType food) async {
     try {
-      final row = await _client.rpc('feed_pet');
+      final row = await _client.rpc(
+        'feed_pet',
+        params: {'p_food_key': food.key},
+      );
       return Pet.fromJson(row as Map<String, dynamic>);
     } on PostgrestException catch (e) {
       if (e.message.contains('feed_cooldown')) throw FeedCooldownException();

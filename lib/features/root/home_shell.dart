@@ -4,6 +4,7 @@ import 'package:meowes_app/features/home/home_screen.dart';
 import 'package:meowes_app/features/friends/friends_screen.dart';
 import 'package:meowes_app/features/groups/groups_screen.dart';
 import 'package:meowes_app/features/activity/activity_screen.dart';
+import 'package:meowes_app/features/pet/pet_home_screen.dart';
 import 'package:meowes_app/features/profile/profile_screen.dart';
 
 /// The signed-in app shell: an [IndexedStack] of the five tab screens with
@@ -19,7 +20,14 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
-  static const _tabs = [HomeScreen(), FriendsScreen(), GroupsScreen(), ActivityScreen(), ProfileScreen()];
+  static const _tabs = [
+    HomeScreen(),
+    PetHomeScreen(),
+    FriendsScreen(),
+    GroupsScreen(),
+    ActivityScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {

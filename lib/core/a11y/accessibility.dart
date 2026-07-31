@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final reduceTransparencyProvider = StateProvider<bool>((ref) => false);
+// Always on: the glass blur effect is permanently disabled in favor of
+// solid surfaces. No UI exposes a toggle for this anymore.
+final reduceTransparencyProvider = StateProvider<bool>((ref) => true);
 
 bool _platformReduceTransparency(BuildContext context) {
   final mq = MediaQuery.maybeOf(context);

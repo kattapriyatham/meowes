@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:meowes_app/models/food.dart';
 import 'package:meowes_app/models/pet.dart';
 import 'package:meowes_app/repositories/pet_repository.dart';
 
@@ -82,21 +83,26 @@ void main() {
 
   test('feed() parses the returned pet row', () async {
     when(
-      () => client.rpc('feed_pet'),
+      () => client.rpc('feed_pet', params: {'p_food_key': 'fish'}),
     ).thenAnswer((_) => _FakeRpcResult(samplePetJson));
 
-    final pet = await repo.feed();
+    final pet = await repo.feed(FoodType.fish);
 
     expect(pet.coins, 27);
     expect(pet.mood, MoodState.happy);
   });
 
   test('feed() throws FeedCooldownException on cooldown error', () async {
-    when(() => client.rpc('feed_pet')).thenAnswer(
+    when(
+      () => client.rpc('feed_pet', params: {'p_food_key': 'treats'}),
+    ).thenAnswer(
       (_) => _FakeRpcResult.error(PostgrestException(message: 'feed_cooldown')),
     );
 
-    expect(() => repo.feed(), throwsA(isA<FeedCooldownException>()));
+    expect(
+      () => repo.feed(FoodType.treats),
+      throwsA(isA<FeedCooldownException>()),
+    );
   });
 
   test(

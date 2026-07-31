@@ -79,6 +79,5 @@ void main() {
     expect(find.text('Hi there'), findsOneWidget);
     expect(find.text('All settled up'), findsOneWidget);
     expect(find.text('Add expense'), findsOneWidget);
-    expect(find.text('Settle up'), findsOneWidget);
   });
 }

@@ -11,6 +11,11 @@ import 'package:meowes_app/models/expense_split.dart';
 import 'package:meowes_app/repositories/expense_repository.dart';
 import 'package:meowes_app/splitting/split_calculator.dart';
 
+/// Accent used only for selection state (selected chip/tile border + check
+/// badges) on this screen, matching the reference design's gold outline
+/// style — distinct from the app's black-ink primary accent.
+const _kGold = Color(0xFFC08B1E);
+
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final String? groupId;
   final List<String> participantIds;
@@ -34,8 +39,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _amountController = TextEditingController();
   SplitType _splitType = SplitType.equal;
   late String _paidBy;
+  late Set<String> _sharingIds;
   final Map<String, TextEditingController> _percentControllers = {};
-  final Map<String, double> _exactAmounts = {};
+  final Map<String, TextEditingController> _exactControllers = {};
   late final Future<List<AppUser>> _profilesFuture;
   String _me = '';
 
@@ -48,30 +54,31 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     _paidBy = widget.participantIds.isEmpty
         ? ''
         : (editing?.paidBy ?? widget.participantIds.first);
-    final evenPercent = widget.participantIds.isEmpty
-        ? '0'
-        : (100 / widget.participantIds.length).toStringAsFixed(1);
+    _sharingIds = Set.of(widget.participantIds);
     for (final id in widget.participantIds) {
-      _percentControllers[id] = TextEditingController(text: evenPercent);
-      _exactAmounts[id] = 0;
+      _percentControllers[id] = TextEditingController();
+      _exactControllers[id] = TextEditingController();
     }
 
     if (editing != null && existingSplits != null && existingSplits.isNotEmpty) {
       _descriptionController.text = editing.description;
       _amountController.text = (editing.amountMinorUnits / 100).toStringAsFixed(2);
       _splitType = SplitType.exact;
+      _sharingIds = existingSplits.map((s) => s.userId).toSet();
       for (final split in existingSplits) {
-        _exactAmounts[split.userId] = split.shareAmountMinorUnits / 100;
+        final amount = split.shareAmountMinorUnits / 100;
+        _exactControllers[split.userId]?.text = amount.round().toString();
         final pct = editing.amountMinorUnits == 0
             ? 0.0
             : split.shareAmountMinorUnits / editing.amountMinorUnits * 100;
         _percentControllers[split.userId]?.text = pct.toStringAsFixed(1);
       }
+    } else {
+      _resetSplitsToEven();
     }
 
     // Attached after any prefill above so setting .text programmatically
-    // doesn't trigger _onAmountChanged and reset the just-restored exact
-    // amounts back to an even split.
+    // doesn't trigger _onAmountChanged and reset the just-restored splits.
     _amountController.addListener(_onAmountChanged);
 
     _profilesFuture = widget.participantIds.isEmpty
@@ -79,14 +86,44 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         : ref.read(friendRepositoryProvider).getPublicProfiles(widget.participantIds);
   }
 
-  void _onAmountChanged() {
+  void _onAmountChanged() => _resetSplitsToEven();
+
+  /// Distributes the current total evenly across the currently-sharing
+  /// participants for both the exact and percentage controllers. Called
+  /// whenever the amount changes or the sharing set changes, so switching
+  /// split type never shows stale numbers from a different total/group.
+  void _resetSplitsToEven() {
     final total = double.tryParse(_amountController.text) ?? 0;
-    final even = widget.participantIds.isEmpty ? 0.0 : total / widget.participantIds.length;
+    final ids = _sharingIds.toList();
+    final evenAmount = ids.isEmpty ? 0.0 : (total / ids.length).roundToDouble();
+    final evenPercent = ids.isEmpty ? 0.0 : 100 / ids.length;
     setState(() {
       for (final id in widget.participantIds) {
-        _exactAmounts[id] = even;
+        final sharing = _sharingIds.contains(id);
+        _exactControllers[id]!.text = sharing ? evenAmount.round().toString() : '0';
+        _percentControllers[id]!.text = sharing ? evenPercent.toStringAsFixed(1) : '0';
       }
     });
+  }
+
+  void _setSharing(String id, bool sharing) {
+    setState(() {
+      if (sharing) {
+        _sharingIds.add(id);
+      } else {
+        _sharingIds.remove(id);
+      }
+    });
+    _resetSplitsToEven();
+  }
+
+  void _toggleSelectAll() {
+    setState(() {
+      _sharingIds = _sharingIds.length == widget.participantIds.length
+          ? {}
+          : Set.of(widget.participantIds);
+    });
+    _resetSplitsToEven();
   }
 
   @override
@@ -97,23 +134,25 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     for (final c in _percentControllers.values) {
       c.dispose();
     }
+    for (final c in _exactControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   double get _totalAmount => double.tryParse(_amountController.text) ?? 0;
 
-  double get _percentTotal => widget.participantIds.fold<double>(
-        0,
-        (sum, id) => sum + (double.tryParse(_percentControllers[id]!.text) ?? 0),
-      );
+  double get _percentTotal =>
+      _sharingIds.fold<double>(0, (sum, id) => sum + (double.tryParse(_percentControllers[id]!.text) ?? 0));
 
   double get _exactTotal =>
-      widget.participantIds.fold<double>(0, (sum, id) => sum + (_exactAmounts[id] ?? 0));
+      _sharingIds.fold<double>(0, (sum, id) => sum + (double.tryParse(_exactControllers[id]!.text) ?? 0));
 
   bool get _canSave {
     if (_descriptionController.text.trim().isEmpty || _totalAmount <= 0) return false;
+    if (_sharingIds.isEmpty) return false;
     if (_splitType == SplitType.percentage) {
-      if (widget.participantIds.any((id) => double.tryParse(_percentControllers[id]!.text) == null)) {
+      if (_sharingIds.any((id) => double.tryParse(_percentControllers[id]!.text) == null)) {
         return false;
       }
       return (_percentTotal - 100).abs() < 0.01;
@@ -125,7 +164,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   Map<String, int>? _computeExactSharesInPaise() {
-    final ids = widget.participantIds;
+    final ids = _sharingIds.toList();
     final amountMinorUnits = (_totalAmount * 100).round();
     final result = <String, int>{};
     var allocated = 0;
@@ -133,7 +172,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       if (i == ids.length - 1) {
         result[ids[i]] = amountMinorUnits - allocated;
       } else {
-        final share = (_exactAmounts[ids[i]]! * 100).round();
+        final share = ((double.tryParse(_exactControllers[ids[i]]!.text) ?? 0) * 100).round();
         result[ids[i]] = share;
         allocated += share;
       }
@@ -176,187 +215,167 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             final names = {for (final p in snapshot.data ?? <AppUser>[]) p.id: p.name};
             String nameOf(String id) => id == _me ? 'Me' : (names[id] ?? '...');
 
-            return ListView(
-              padding: const EdgeInsets.all(20),
+            return Column(
               children: [
-                TextField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _amountController,
-                  decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-                const SizedBox(height: 20),
-                if (!isEditing) ...[
-                  const SectionHeader(title: 'Paid by'),
-                  const SizedBox(height: 8),
-                  for (final id in widget.participantIds)
-                    RadioListTile<String>(
-                      value: id,
-                      groupValue: _paidBy,
-                      onChanged: (v) => setState(() => _paidBy = v!),
-                      title: Text(nameOf(id), style: TextStyle(color: t.textPrimary)),
-                      activeColor: t.brandSolid,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  const SizedBox(height: 12),
-                ],
-                const SectionHeader(title: 'Split between'),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final id in widget.participantIds)
-                      Chip(
-                        avatar: AppAvatar(seed: id, label: nameOf(id), size: 24),
-                        label: Text(nameOf(id), style: TextStyle(color: t.textPrimary)),
-                        backgroundColor: t.cardColor,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const SectionHeader(title: 'Split type'),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SplitTypeTile(
-                        label: 'Equal',
-                        icon: Icons.balance,
-                        selected: _splitType == SplitType.equal,
-                        onTap: () => setState(() => _splitType = SplitType.equal),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _SplitTypeTile(
-                        label: 'Percentage',
-                        icon: Icons.percent,
-                        selected: _splitType == SplitType.percentage,
-                        onTap: () => setState(() => _splitType = SplitType.percentage),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _SplitTypeTile(
-                        label: 'Exact',
-                        icon: Icons.tune,
-                        selected: _splitType == SplitType.exact,
-                        onTap: () => setState(() => _splitType = SplitType.exact),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                if (_splitType == SplitType.percentage) ...[
-                  for (final id in widget.participantIds)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text(nameOf(id), style: TextStyle(color: t.textPrimary))),
-                          SizedBox(
-                            width: 90,
-                            child: TextField(
-                              controller: _percentControllers[id],
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: const InputDecoration(suffixText: '%'),
-                              onChanged: (_) => setState(() {}),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  Text(
-                    'Total: ${_percentTotal.toStringAsFixed(1)}% (needs to be 100%)',
-                    style: TextStyle(
-                      color: (_percentTotal - 100).abs() < 0.01 ? t.positive : t.negative,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-                if (_splitType == SplitType.exact) ...[
-                  for (final id in widget.participantIds)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SoftCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Expanded(child: Text(nameOf(id), style: TextStyle(color: t.textPrimary))),
-                              Text(
-                                '₹${(_exactAmounts[id] ?? 0).toStringAsFixed(2)}',
-                                style: TextStyle(color: t.textPrimary),
+                              TextField(
+                                controller: _descriptionController,
+                                decoration: const InputDecoration(labelText: 'Description'),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                              const SizedBox(height: 14),
+                              TextField(
+                                controller: _amountController,
+                                decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹'),
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
                               ),
                             ],
                           ),
-                          Slider(
-                            value: (_exactAmounts[id] ?? 0).clamp(0, _totalAmount == 0 ? 1 : _totalAmount),
-                            min: 0,
-                            max: _totalAmount == 0 ? 1 : _totalAmount,
-                            activeColor: t.brandSolid,
-                            onChanged: _totalAmount == 0
-                                ? null
-                                : (v) => setState(() => _exactAmounts[id] = v),
+                        ),
+                        if (!isEditing) ...[
+                          const SizedBox(height: 20),
+                          const SectionHeader(title: 'Who paid?'),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 52,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: widget.participantIds.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 10),
+                              itemBuilder: (context, i) {
+                                final id = widget.participantIds[i];
+                                return _PayerChip(
+                                  selected: _paidBy == id,
+                                  name: nameOf(id),
+                                  seed: id,
+                                  onTap: () => setState(() => _paidBy = id),
+                                );
+                              },
+                            ),
                           ),
                         ],
-                      ),
-                    ),
-                  Text(
-                    'Remaining: ₹${(_totalAmount - _exactTotal).toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: (_totalAmount - _exactTotal).abs() < 0.01 ? t.positive : t.negative,
-                      fontWeight: FontWeight.w600,
+                        const SizedBox(height: 20),
+                        const SectionHeader(title: 'Split type'),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _SplitTypeTile(
+                                label: 'Equal',
+                                icon: Icons.balance,
+                                selected: _splitType == SplitType.equal,
+                                onTap: () => setState(() => _splitType = SplitType.equal),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _SplitTypeTile(
+                                label: 'Percentage',
+                                icon: Icons.percent,
+                                selected: _splitType == SplitType.percentage,
+                                onTap: () => setState(() => _splitType = SplitType.percentage),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _SplitTypeTile(
+                                label: 'Exact',
+                                icon: Icons.tune,
+                                selected: _splitType == SplitType.exact,
+                                onTap: () => setState(() => _splitType = SplitType.exact),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            const Expanded(child: SectionHeader(title: "Who's sharing?")),
+                            GestureDetector(
+                              onTap: _toggleSelectAll,
+                              child: Text(
+                                _sharingIds.length == widget.participantIds.length
+                                    ? 'Clear'
+                                    : 'Select all',
+                                style: const TextStyle(color: _kGold, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _SharingSplitCard(
+                          splitType: _splitType,
+                          participantIds: widget.participantIds,
+                          sharingIds: _sharingIds,
+                          nameOf: nameOf,
+                          totalAmount: _totalAmount,
+                          exactControllers: _exactControllers,
+                          percentControllers: _percentControllers,
+                          exactTotal: _exactTotal,
+                          percentTotal: _percentTotal,
+                          onToggleSharing: _setSharing,
+                          onExactChanged: (_) => setState(() {}),
+                          onPercentChanged: (_) => setState(() {}),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                PillButton(
-                  label: isEditing ? 'Save Changes' : 'Save Expense',
-                  primary: true,
-                  onTap: _canSave
-                      ? () async {
-                          final amountMinorUnits = (_totalAmount * 100).round();
-                          final percentages = _splitType == SplitType.percentage
-                              ? {
-                                  for (final id in widget.participantIds)
-                                    id: double.parse(_percentControllers[id]!.text),
-                                }
-                              : null;
-                          final exactAmounts =
-                              _splitType == SplitType.exact ? _computeExactSharesInPaise() : null;
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: PillButton(
+                    label: isEditing ? 'Save Changes' : 'Save Expense',
+                    primary: true,
+                    onTap: _canSave
+                        ? () async {
+                            final amountMinorUnits = (_totalAmount * 100).round();
+                            final sharingIds = _sharingIds.toList();
+                            final percentages = _splitType == SplitType.percentage
+                                ? {
+                                    for (final id in sharingIds)
+                                      id: double.parse(_percentControllers[id]!.text),
+                                  }
+                                : null;
+                            final exactAmounts =
+                                _splitType == SplitType.exact ? _computeExactSharesInPaise() : null;
 
-                          if (isEditing) {
-                            await repo.editExpense(
-                              expenseId: widget.editing!.id,
-                              description: _descriptionController.text.trim(),
-                              amountMinorUnits: amountMinorUnits,
-                              splitType: _splitType,
-                              participantIds: widget.participantIds,
-                              percentages: percentages,
-                              exactAmounts: exactAmounts,
-                            );
-                          } else {
-                            await repo.createExpense(
-                              description: _descriptionController.text.trim(),
-                              amountMinorUnits: amountMinorUnits,
-                              groupId: widget.groupId,
-                              paidBy: _paidBy,
-                              splitType: _splitType,
-                              participantIds: widget.participantIds,
-                              percentages: percentages,
-                              exactAmounts: exactAmounts,
-                              expenseDate: DateTime.now(),
-                            );
+                            if (isEditing) {
+                              await repo.editExpense(
+                                expenseId: widget.editing!.id,
+                                description: _descriptionController.text.trim(),
+                                amountMinorUnits: amountMinorUnits,
+                                splitType: _splitType,
+                                participantIds: sharingIds,
+                                percentages: percentages,
+                                exactAmounts: exactAmounts,
+                              );
+                            } else {
+                              await repo.createExpense(
+                                description: _descriptionController.text.trim(),
+                                amountMinorUnits: amountMinorUnits,
+                                groupId: widget.groupId,
+                                paidBy: _paidBy,
+                                splitType: _splitType,
+                                participantIds: sharingIds,
+                                percentages: percentages,
+                                exactAmounts: exactAmounts,
+                                expenseDate: DateTime.now(),
+                              );
+                            }
+                            if (context.mounted) Navigator.of(context).pop();
                           }
-                          if (context.mounted) Navigator.of(context).pop();
-                        }
-                      : null,
+                        : null,
+                  ),
                 ),
               ],
             );
@@ -383,24 +402,243 @@ class _SplitTypeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
-    final fg = selected ? t.onBrand : t.textPrimary;
+    final fg = selected ? _kGold : t.textPrimary;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: selected ? t.brandSolid : t.cardColor,
+          color: t.cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? t.brandSolid : t.glassBorder, width: 2),
+          border: Border.all(color: selected ? _kGold : t.glassBorder, width: 2),
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: fg),
-            const SizedBox(height: 6),
-            Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 12)),
+            Icon(icon, color: fg, size: 18),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Compact selectable avatar+name pill used in the horizontally-scrolling
+/// "Who paid?" row.
+class _PayerChip extends StatelessWidget {
+  final bool selected;
+  final String name;
+  final String seed;
+  final VoidCallback onTap;
+
+  const _PayerChip({
+    required this.selected,
+    required this.name,
+    required this.seed,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: t.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? _kGold : t.glassBorder, width: 2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppAvatar(seed: seed, label: name, size: 26),
+            const SizedBox(width: 8),
+            Text(
+              name,
+              style: TextStyle(color: t.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            if (selected) ...[
+              const SizedBox(width: 8),
+              const _CheckBadge(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small filled gold circle with a white checkmark — the selected-state
+/// indicator used by [_PayerChip] and [_SharingRow].
+class _CheckBadge extends StatelessWidget {
+  const _CheckBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: const BoxDecoration(color: _kGold, shape: BoxShape.circle),
+      child: const Icon(Icons.check, color: Colors.white, size: 14),
+    );
+  }
+}
+
+/// Merged "who's sharing + how much" card: one row per participant with an
+/// avatar, name, their amount (read-only for Equal, editable for
+/// Exact/Percentage), and a trailing check badge that toggles whether they
+/// share the expense at all. Unchecked participants show a blank amount
+/// slot instead of a second, separate summary list.
+class _SharingSplitCard extends StatelessWidget {
+  final SplitType splitType;
+  final List<String> participantIds;
+  final Set<String> sharingIds;
+  final String Function(String id) nameOf;
+  final double totalAmount;
+  final Map<String, TextEditingController> exactControllers;
+  final Map<String, TextEditingController> percentControllers;
+  final double exactTotal;
+  final double percentTotal;
+  final void Function(String id, bool sharing) onToggleSharing;
+  final ValueChanged<String> onExactChanged;
+  final ValueChanged<String> onPercentChanged;
+
+  const _SharingSplitCard({
+    required this.splitType,
+    required this.participantIds,
+    required this.sharingIds,
+    required this.nameOf,
+    required this.totalAmount,
+    required this.exactControllers,
+    required this.percentControllers,
+    required this.exactTotal,
+    required this.percentTotal,
+    required this.onToggleSharing,
+    required this.onExactChanged,
+    required this.onPercentChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    final isExact = splitType == SplitType.exact;
+    final isEqual = splitType == SplitType.equal;
+    final equalShares = isEqual
+        ? SplitCalculator.calculate(
+            totalMinorUnits: (totalAmount * 100).round(),
+            type: SplitType.equal,
+            participantIds: sharingIds.toList(),
+          )
+        : const <String, int>{};
+
+    final balanced = isExact ? (exactTotal - totalAmount).abs() < 0.01 : (percentTotal - 100).abs() < 0.01;
+    final progress = isExact
+        ? (totalAmount <= 0 ? 0.0 : (exactTotal / totalAmount).clamp(0, 1).toDouble())
+        : (percentTotal / 100).clamp(0, 1).toDouble();
+    final statusColor = balanced ? t.positive : t.negative;
+    final statusText = balanced
+        ? 'Perfect! All set'
+        : (isExact
+            ? 'Remaining: ₹${(totalAmount - exactTotal).toStringAsFixed(2)}'
+            : 'Total: ${percentTotal.toStringAsFixed(1)}% (needs to be 100%)');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SoftCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (var i = 0; i < participantIds.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: t.glassBorder, indent: 16, endIndent: 16),
+                Builder(builder: (context) {
+                  final id = participantIds[i];
+                  final checked = sharingIds.contains(id);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        AppAvatar(seed: id, label: nameOf(id), size: 36),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(nameOf(id), style: TextStyle(color: t.textPrimary, fontWeight: FontWeight.w600)),
+                        ),
+                        SizedBox(
+                          width: 90,
+                          child: !checked
+                              ? null
+                              : (isEqual
+                                  ? Text(
+                                      '₹${((equalShares[id] ?? 0) / 100).toStringAsFixed(2)}',
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(color: t.textPrimary, fontWeight: FontWeight.w700),
+                                    )
+                                  : TextField(
+                                      controller: isExact ? exactControllers[id] : percentControllers[id],
+                                      keyboardType: isExact
+                                          ? TextInputType.number
+                                          : const TextInputType.numberWithOptions(decimal: true),
+                                      textAlign: TextAlign.right,
+                                      decoration: InputDecoration(
+                                        prefixText: isExact ? '₹' : null,
+                                        suffixText: isExact ? null : '%',
+                                      ),
+                                      onChanged: isExact ? onExactChanged : onPercentChanged,
+                                    )),
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () => onToggleSharing(id, !checked),
+                          child: checked
+                              ? const _CheckBadge()
+                              : Container(
+                                  width: 22,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: t.glassBorder, width: 2),
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+        if (sharingIds.isEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            'Pick at least one person to share this expense with.',
+            style: TextStyle(color: t.negative, fontWeight: FontWeight.w600),
+          ),
+        ] else if (!isEqual) ...[
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: t.glassBorder,
+              color: statusColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.w600)),
+        ],
+      ],
     );
   }
 }

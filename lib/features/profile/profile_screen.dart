@@ -1,9 +1,9 @@
 // lib/features/profile/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:meowes_app/core/a11y/accessibility.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
+import 'package:meowes_app/core/theme/theme_mode_provider.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
 import 'package:meowes_app/models/app_user.dart';
@@ -15,16 +15,14 @@ export 'package:meowes_app/features/friends/add_friend_screen.dart' show friendR
 
 /// Caches the current user's own profile fetch. autoDispose so it doesn't
 /// linger once ProfileScreen is popped, but — unlike calling
-/// `getMyProfile()` inline in `build()` — a rebuild of ProfileScreen (e.g.
-/// from toggling reduceTransparencyProvider) reuses the cached result
-/// instead of re-running the fetch and flashing the skeleton loader again.
+/// `getMyProfile()` inline in `build()` — a rebuild of ProfileScreen reuses
+/// the cached result instead of re-running the fetch and flashing the
+/// skeleton loader again.
 final myProfileProvider = FutureProvider.autoDispose<AppUser?>(
   (ref) => ref.watch(friendRepositoryProvider).getMyProfile(),
 );
 
-/// Profile tab: glass header with avatar/name, a settings card (currently
-/// just the reduce-transparency accessibility toggle), and a sign-out
-/// action.
+/// Profile tab: glass header with avatar/name and a sign-out action.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -46,18 +44,12 @@ class ProfileScreen extends ConsumerWidget {
               loading: profileAsync.isLoading,
             ),
             const SizedBox(height: 16),
-            GlassCard(
-              padding: EdgeInsets.zero,
-              child: Material(
-                color: Colors.transparent,
-                child: SwitchListTile(
-                  title: const Text('Reduce transparency'),
-                  value: ref.watch(reduceTransparencyProvider),
-                  onChanged: (v) => ref.read(reduceTransparencyProvider.notifier).state = v,
-                ),
-              ),
+            GlassButton(
+              label: 'Theme: ${themeModeLabel(ref.watch(themeModeProvider))}',
+              secondary: true,
+              onPressed: () => ref.read(themeModeProvider.notifier).update(nextThemeMode),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             GlassButton(
               label: 'Sign out',
               secondary: true,

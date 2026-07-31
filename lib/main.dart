@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meowes_app/core/app_theme.dart';
+import 'package:meowes_app/core/theme/theme_mode_provider.dart';
 import 'package:meowes_app/features/root/root_screen.dart';
 
 Future<void> main() async {
@@ -13,16 +14,16 @@ Future<void> main() async {
   runApp(const ProviderScope(child: MeowesApp()));
 }
 
-class MeowesApp extends StatelessWidget {
+class MeowesApp extends ConsumerWidget {
   const MeowesApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Meowes',
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(themeModeProvider),
       home: const RootScreen(),
     );
   }

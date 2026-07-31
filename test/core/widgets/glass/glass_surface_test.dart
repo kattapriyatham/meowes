@@ -15,7 +15,10 @@ Widget _host(Widget child, {List<Override> overrides = const []}) => ProviderSco
 
 void main() {
   testWidgets('renders BackdropFilter when blur enabled', (tester) async {
-    await tester.pumpWidget(_host(const GlassSurface(child: Text('x'))));
+    await tester.pumpWidget(_host(
+      const GlassSurface(child: Text('x')),
+      overrides: [reduceTransparencyProvider.overrideWith((ref) => false)],
+    ));
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
@@ -24,11 +27,8 @@ void main() {
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  testWidgets('no BackdropFilter when reduceTransparencyProvider is true', (tester) async {
-    await tester.pumpWidget(_host(
-      const GlassSurface(child: Text('x')),
-      overrides: [reduceTransparencyProvider.overrideWith((ref) => true)],
-    ));
+  testWidgets('no BackdropFilter when reduceTransparencyProvider is true (default)', (tester) async {
+    await tester.pumpWidget(_host(const GlassSurface(child: Text('x'))));
     expect(find.byType(BackdropFilter), findsNothing);
   });
 }

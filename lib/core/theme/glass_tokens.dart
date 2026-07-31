@@ -78,16 +78,16 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
   );
 
   static const light = GlassTokens(
-    gradientTop: Color(0xFFF0E9DC), // warm cream paper
-    gradientBottom: Color(0xFFE8DFCF),
+    gradientTop: Color(0xFFFAF5EC), // warm cream paper (lightened)
+    gradientBottom: Color(0xFFF3EBDC),
     blobIndigo: Color(0x00000000), // paper theme: no ambient blobs
     blobTeal: Color(0x00000000),
-    glassFill: Color(0xF2F6F1E9), // near-opaque cream card
+    glassFill: Color(0xF2FAF6EE), // near-opaque cream card
     glassBorder: Color(0x14000000),
     glassSheen: Color(0x00FFFFFF),
-    glassStrongFill: Color(0xF7F7F2EA),
+    glassStrongFill: Color(0xF7FBF8F2),
     glassStrongBorder: Color(0x14000000),
-    solidFallback: Color(0xFFF6F1E9),
+    solidFallback: Color(0xFFFAF6EE),
     textPrimary: Color(0xFF211E1A), // warm near-black ink
     textSecondary: Color(0xFF8A8175),
     textMuted: Color(0xFFA99F91),
@@ -101,7 +101,7 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     brandEnd: Color(0xFF211E1A),
     brandSolid: Color(0xFF211E1A),
     onBrand: Color(0xFFF6F1E9),
-    cardColor: Color(0xFFF6F1E9), // warm cream card
+    cardColor: Color(0xFFFAF6EE), // warm cream card
     cardShadow: Color(0x1A6B5B45), // soft warm shadow
     blurCard: 18,
     blurStrong: 24,

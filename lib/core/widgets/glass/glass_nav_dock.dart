@@ -9,6 +9,7 @@ class GlassNavDock extends StatelessWidget {
 
   static const _items = [
     (icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
+    (icon: Icons.pets_outlined, activeIcon: Icons.pets, label: 'Pet'),
     (icon: Icons.people_outline, activeIcon: Icons.people, label: 'Friends'),
     (icon: Icons.grid_view_outlined, activeIcon: Icons.grid_view, label: 'Groups'),
     (icon: Icons.show_chart, activeIcon: Icons.show_chart, label: 'Activity'),
