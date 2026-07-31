@@ -5,13 +5,16 @@ import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/theme/theme_mode_provider.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
-import 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
+import 'package:meowes_app/features/auth/sign_in_screen.dart';
+import 'package:meowes_app/features/friends/add_friend_screen.dart'
+    show friendRepositoryProvider;
 import 'package:meowes_app/models/app_user.dart';
 
 // Re-exported so screens/tests that only import this file (rather than the
 // friend-add screen where it happens to be declared) can still reach the
 // shared friendRepositoryProvider.
-export 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
+export 'package:meowes_app/features/friends/add_friend_screen.dart'
+    show friendRepositoryProvider;
 
 /// Caches the current user's own profile fetch. autoDispose so it doesn't
 /// linger once ProfileScreen is popped, but — unlike calling
@@ -47,13 +50,27 @@ class ProfileScreen extends ConsumerWidget {
             GlassButton(
               label: 'Theme: ${themeModeLabel(ref.watch(themeModeProvider))}',
               secondary: true,
-              onPressed: () => ref.read(themeModeProvider.notifier).update(nextThemeMode),
+              onPressed: () =>
+                  ref.read(themeModeProvider.notifier).update(nextThemeMode),
             ),
             const SizedBox(height: 12),
             GlassButton(
               label: 'Sign out',
               secondary: true,
-              onPressed: () => ref.read(supabaseClientProvider).auth.signOut(),
+              onPressed: () async {
+                await ref.read(supabaseClientProvider).auth.signOut();
+                // RootScreen only picks the initial route once at app
+                // start (see its doc comment) — it doesn't react to auth
+                // state changes, so signing out has to navigate explicitly
+                // rather than relying on a rebuild. Clears the whole stack
+                // so back doesn't lead into the signed-out session.
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const SignInScreen()),
+                    (route) => false,
+                  );
+                }
+              },
             ),
           ],
         ),
@@ -67,7 +84,11 @@ class _ProfileHeader extends StatelessWidget {
   final String? name;
   final bool loading;
 
-  const _ProfileHeader({required this.me, required this.name, required this.loading});
+  const _ProfileHeader({
+    required this.me,
+    required this.name,
+    required this.loading,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +103,11 @@ class _ProfileHeader extends StatelessWidget {
                 ? const SkeletonLoader(height: 18, width: 140)
                 : Text(
                     name ?? 'Unknown',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: t.textPrimary),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: t.textPrimary,
+                    ),
                   ),
           ),
         ],
