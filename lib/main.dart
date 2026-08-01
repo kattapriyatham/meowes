@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meowes_app/core/app_theme.dart';
-import 'package:meowes_app/core/theme/theme_mode_provider.dart';
 import 'package:meowes_app/features/root/root_screen.dart';
 
 Future<void> main() async {
@@ -14,16 +13,16 @@ Future<void> main() async {
   runApp(const ProviderScope(child: MeowesApp()));
 }
 
-class MeowesApp extends ConsumerWidget {
+class MeowesApp extends StatelessWidget {
   const MeowesApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Meowes',
       theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ref.watch(themeModeProvider),
+      // Dark mode is disabled for now — light is the only supported theme.
+      themeMode: ThemeMode.light,
       home: const RootScreen(),
     );
   }

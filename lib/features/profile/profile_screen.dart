@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
-import 'package:meowes_app/core/theme/theme_mode_provider.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/auth/sign_in_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart'
@@ -47,13 +46,6 @@ class ProfileScreen extends ConsumerWidget {
               loading: profileAsync.isLoading,
             ),
             const SizedBox(height: 16),
-            GlassButton(
-              label: 'Theme: ${themeModeLabel(ref.watch(themeModeProvider))}',
-              secondary: true,
-              onPressed: () =>
-                  ref.read(themeModeProvider.notifier).update(nextThemeMode),
-            ),
-            const SizedBox(height: 12),
             GlassButton(
               label: 'Sign out',
               secondary: true,
