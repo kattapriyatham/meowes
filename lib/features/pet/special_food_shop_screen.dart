@@ -143,8 +143,6 @@ class _SpecialFoodShopScreenState extends ConsumerState<SpecialFoodShopScreen> {
               ),
               const SizedBox(height: 20),
               const _HappinessBanner(),
-              const SizedBox(height: 16),
-              const _Footer(),
             ],
           ),
         ),
@@ -571,31 +569,6 @@ class _HappinessBanner extends StatelessWidget {
               height: 64,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => const SizedBox(width: 64, height: 64),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Footer extends StatelessWidget {
-  const _Footer();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).extension<GlassTokens>()!;
-    return Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.verified_user_outlined, size: 14, color: t.textMuted),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              'All purchases are final and items are non-refundable.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: t.textMuted, fontSize: 11),
             ),
           ),
         ],
