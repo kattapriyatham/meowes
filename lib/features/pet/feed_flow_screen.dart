@@ -61,6 +61,12 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
   Timer? _ticker;
   late Future<List<FoodInventoryItem>> _inventoryFuture;
 
+  /// Drives the fading "Yum! +N Happiness" message shown inline over the
+  /// card after a successful feed — replaces the old modal bottom sheet
+  /// (no Hunger bar, no dismiss button, just fades in and out on its own).
+  bool _showYum = false;
+  int _yumReward = 0;
+
   @override
   void initState() {
     super.initState();
@@ -130,13 +136,10 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
       setState(() {
         _pet = results[0] as Pet;
         _eating = false;
+        _yumReward = food.coinReward;
+        _showYum = true;
       });
-      await showModalBottomSheet<void>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _YumSheet(food: food),
-      );
-      if (mounted) Navigator.of(context).pop();
+      await _dismissYumAndPop();
     } on FeedCooldownException {
       await minDisplay;
       if (!mounted) return;
@@ -149,6 +152,17 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
           ),
         );
     }
+  }
+
+  /// Holds the Yum message on screen, fades it out, then pops back to the
+  /// previous screen — same end-to-end timing/behavior the old modal sheet
+  /// had (await sheet, then pop), just without needing a tap to dismiss.
+  Future<void> _dismissYumAndPop() async {
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+    setState(() => _showYum = false);
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _onSpecialDropped(FoodInventoryItem item) async {
@@ -166,19 +180,12 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
       setState(() {
         _pet = Pet.fromJson(result.pet);
         _eating = false;
+        _yumReward = result.food.coinReward;
+        _showYum = true;
       });
       // Refresh inventory
       _inventoryFuture = ref.read(petRepositoryProvider).getFoodInventory();
-      await showModalBottomSheet<void>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _YumSheetSpecial(
-          foodName: result.food.name,
-          coinReward: result.food.coinReward,
-          usesRemaining: result.usesRemaining,
-        ),
-      );
-      if (mounted) Navigator.of(context).pop();
+      await _dismissYumAndPop();
     } on FeedCooldownException {
       await minDisplay;
       if (!mounted) return;
@@ -331,80 +338,50 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                                 .toList(),
                           ),
                         ),
+                        IgnorePointer(
+                          child: Center(
+                            child: AnimatedOpacity(
+                              opacity: _showYum ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 400),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.15),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Yum!',
+                                      style: TextStyle(
+                                        color: t.textPrimary,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '+$_yumReward Happiness',
+                                      style: TextStyle(color: t.positive, fontWeight: FontWeight.w700, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Reward sheet for special foods.
-class _YumSheetSpecial extends StatelessWidget {
-  final String foodName;
-  final int coinReward;
-  final int usesRemaining;
-
-  const _YumSheetSpecial({
-    required this.foodName,
-    required this.coinReward,
-    required this.usesRemaining,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).extension<GlassTokens>()!;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: SoftCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Yum!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: t.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: t.positive.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  '+$coinReward Happiness',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: t.positive,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '$foodName · $usesRemaining uses left',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: t.textSecondary, fontSize: 14),
-              ),
-              const SizedBox(height: 24),
-              PillButton(
-                label: 'Great!',
-                onTap: () => Navigator.of(context).pop(),
               ),
             ],
           ),
@@ -718,92 +695,3 @@ class _BowlImageSpecial extends StatelessWidget {
   }
 }
 
-/// Reward summary shown as a modal bottom sheet over the eating scene once
-/// feeding completes, instead of replacing the whole screen.
-class _YumSheet extends StatelessWidget {
-  final FoodType food;
-  const _YumSheet({required this.food});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).extension<GlassTokens>()!;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: SoftCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Yum!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: t.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: t.positive.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  '+${food.coinReward} Happiness',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: t.positive,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Hunger',
-                style: TextStyle(color: t.textSecondary, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 1.0, end: 0.0),
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeOut,
-                builder: (context, value, child) => Stack(
-                  children: [
-                    Container(
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: t.textPrimary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    FractionallySizedBox(
-                      widthFactor: value.clamp(0.0, 1.0),
-                      child: Container(
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: t.positive,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              PillButton(
-                label: 'Great!',
-                onTap: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
