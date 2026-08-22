@@ -10,7 +10,7 @@ import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/repositories/auth_repository.dart';
-import 'package:meowes_app/features/auth/profile_setup_screen.dart';
+import 'package:meowes_app/features/root/root_screen.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(ref.watch(supabaseClientProvider)),
@@ -32,7 +32,7 @@ class SignInScreen extends ConsumerWidget {
       await signIn();
       if (context.mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+          MaterialPageRoute(builder: (_) => const RootScreen()),
         );
       }
     }
@@ -47,20 +47,10 @@ class SignInScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               const _Wordmark(),
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      'Split expenses. Stronger friendships.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: t.textSecondary),
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Icon(Icons.auto_awesome,
-                      size: 13, color: _sage.withValues(alpha: 0.65)),
-                ],
+              Text(
+                'Split expenses. Stronger friendships.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: t.textSecondary),
               ),
               const SizedBox(height: 26),
               const _HowItWorksCard(),
@@ -327,21 +317,17 @@ class _LeafBranch extends StatelessWidget {
   }
 }
 
-/// Faint paw prints and sparkles sprinkled around the hero.
+/// Faint paw prints sprinkled around the hero.
 class _PawScatter extends StatelessWidget {
   const _PawScatter();
 
-  // (xFraction, yFraction, size, isSparkle)
-  static const _marks = <(double, double, double, bool)>[
-    (0.03, 0.42, 20, false),
-    (0.10, 0.62, 15, false),
-    (0.15, 0.30, 13, false),
-    (0.90, 0.55, 18, false),
-    (0.95, 0.34, 13, false),
-    (0.26, 0.10, 14, true),
-    (0.78, 0.06, 12, true),
-    (0.22, 0.48, 11, true),
-    (0.84, 0.44, 13, true),
+  // (xFraction, yFraction, size)
+  static const _marks = <(double, double, double)>[
+    (0.03, 0.42, 20),
+    (0.10, 0.62, 15),
+    (0.15, 0.30, 13),
+    (0.90, 0.55, 18),
+    (0.95, 0.34, 13),
   ];
 
   @override
@@ -350,18 +336,16 @@ class _PawScatter extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) => Stack(
         children: [
-          for (final (fx, fy, size, isSparkle) in _marks)
+          for (final (fx, fy, size) in _marks)
             Positioned(
               left: fx * c.maxWidth,
               top: fy * c.maxHeight,
               child: Transform.rotate(
-                angle: isSparkle ? 0 : (fx - 0.5) * 0.9,
+                angle: (fx - 0.5) * 0.9,
                 child: Icon(
-                  isSparkle ? Icons.auto_awesome : Icons.pets,
+                  Icons.pets,
                   size: size,
-                  color: isSparkle
-                      ? t.textMuted.withValues(alpha: 0.35)
-                      : t.textMuted.withValues(alpha: 0.22),
+                  color: t.textMuted.withValues(alpha: 0.22),
                 ),
               ),
             ),

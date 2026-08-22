@@ -554,7 +554,7 @@ class _HappinessBanner extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 88, 16),
               child: Row(
                 children: [
-                  Icon(Icons.auto_awesome, color: t.positive, size: 28),
+                  Icon(Icons.favorite, color: t.positive, size: 28),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(

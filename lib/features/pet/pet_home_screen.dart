@@ -177,35 +177,6 @@ class _PetHomeScreenState extends ConsumerState<PetHomeScreen> {
                           ),
                         ),
                       ),
-                      // Small sparkle accents scattered around the cat.
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Stack(
-                            children: const [
-                              Align(
-                                alignment: Alignment(-0.72, -0.12),
-                                child: _Sparkle(size: 14),
-                              ),
-                              Align(
-                                alignment: Alignment(0.8, -0.32),
-                                child: _Sparkle(size: 12),
-                              ),
-                              Align(
-                                alignment: Alignment(-0.58, 0.2),
-                                child: _Sparkle(size: 10),
-                              ),
-                              Align(
-                                alignment: Alignment(0.7, 0.05),
-                                child: _Sparkle(size: 16),
-                              ),
-                              Align(
-                                alignment: Alignment(-0.82, 0.42),
-                                child: _Sparkle(size: 10),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                       // Mood/coin pills float over the banner itself instead
                       // of a separate card above it.
                       Positioned(
@@ -474,21 +445,6 @@ class _IconChip extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Icon(icon, size: 20, color: t.onBrand),
-    );
-  }
-}
-
-/// Small 4-point sparkle accent scattered around the cat banner.
-class _Sparkle extends StatelessWidget {
-  final double size;
-  const _Sparkle({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Icon(
-      Icons.auto_awesome,
-      size: size,
-      color: Colors.white.withValues(alpha: 0.8),
     );
   }
 }

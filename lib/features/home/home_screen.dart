@@ -94,21 +94,9 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      'Your financial journey, our priority',
-                      style: TextStyle(color: t.textSecondary, fontSize: 13),
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  const Icon(
-                    Icons.auto_awesome,
-                    size: 14,
-                    color: Color(0xFFE0A93B),
-                  ),
-                ],
+              Text(
+                'Your financial journey, our priority',
+                style: TextStyle(color: t.textSecondary, fontSize: 13),
               ),
             ],
           ),
@@ -267,15 +255,6 @@ class _OverviewBody extends StatelessWidget {
               top: 10,
               right: -6,
               child: _PetCatWidget(width: 200),
-            ),
-            Positioned(
-              top: 4,
-              right: 150,
-              child: Icon(
-                Icons.auto_awesome,
-                size: 16,
-                color: t.positive.withValues(alpha: 0.6),
-              ),
             ),
           ],
         );
