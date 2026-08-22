@@ -35,9 +35,15 @@
 - ~~**Add pet naming/customization feature** — Allow user to set/edit pet's name.
   Likely in pet profile screen or first-time setup.~~ ✅ **DONE** — `_PetNameCard` in `profile_screen.dart` opens dialog, saves via `petRepository.updateName()`.
 
-- **Implement invite link feature to add friends** — Allow users to generate
-  and share invite links. Other users can join via link
-  (`lib/features/friends/friends_screen.dart`).
+- ~~**Implement invite link feature to add friends**~~ ✅ **DONE** — lives
+  in `AddFriendScreen` (reachable from `FriendsScreen`), not
+  `friends_screen.dart` itself. "Share invite link" card calls
+  `shareInviteLink()` → native share sheet with `meowes://invite/<code>`;
+  redeeming creates an already-accepted friendship via
+  `join_friendship_by_code` (`supabase/migrations/20260815130000_friend_invite_links.sql`,
+  `lib/features/friends/add_friend_screen.dart`,
+  `lib/features/friends/join_by_invite_screen.dart`, deep-link handling
+  in `lib/main.dart`).
 
 - **Implement notification system** — Notify users when involved in expense.
   Also explore pet feeding notifications (hungry, friend fed pet, streak
