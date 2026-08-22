@@ -115,9 +115,6 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
   }
 
   bool get _anyRegularAvailable => FoodType.values.any((f) => _remainingFor(f) == null);
-  bool _anySpecialAvailable(List<FoodInventoryItem> items) =>
-      items.any((i) => _specialRemaining(i) == null);
-  bool get _anyAvailable => _anyRegularAvailable || _anySpecialAvailable;
 
   Future<void> _onRegularDropped(FoodType food) async {
     if (_eating || _remainingFor(food) != null) return;
