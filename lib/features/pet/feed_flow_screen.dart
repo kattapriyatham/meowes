@@ -216,38 +216,7 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 12),
-              // Special foods get their own scrollable strip here, above
-              // the cat — separate from the fixed 3-item regular row below.
-              // The regular row never grows, but special-food inventory
-              // does as more get purchased, and needs to scroll
-              // independently rather than squeezing into a shared row.
-              FutureBuilder<List<FoodInventoryItem>>(
-                future: _inventoryFuture,
-                builder: (context, snapshot) {
-                  final specialItems = snapshot.data ?? <FoodInventoryItem>[];
-                  if (specialItems.isEmpty) return const SizedBox();
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SizedBox(
-                      height: 96,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: specialItems.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 16),
-                        itemBuilder: (context, index) {
-                          final item = specialItems[index];
-                          return _DraggableSpecialBowl(
-                            item: item,
-                            enabled: !_eating && _specialRemaining(item) == null,
-                            remaining: _specialRemaining(item),
-                          );
-                        },
-                      ),
-                    ),
-                  );
-                },
-              ),
+              const SizedBox(height: 16),
               Expanded(
                 child: SoftCard(
                   padding: EdgeInsets.zero,
@@ -320,10 +289,45 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                             );
                           },
                         ),
+                        // Special foods get their own scrollable strip
+                        // pinned to the top of this same card, drawn after
+                        // (so on top of) the drop-zone DragTarget below it
+                        // in the stack — same layering the regular bowl
+                        // row already relies on. Grows as more get
+                        // purchased, independent of the fixed regular row.
+                        Positioned(
+                          top: 16,
+                          left: 0,
+                          right: 0,
+                          child: FutureBuilder<List<FoodInventoryItem>>(
+                            future: _inventoryFuture,
+                            builder: (context, snapshot) {
+                              final specialItems = snapshot.data ?? <FoodInventoryItem>[];
+                              if (specialItems.isEmpty) return const SizedBox();
+                              return SizedBox(
+                                height: 96,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  itemCount: specialItems.length,
+                                  separatorBuilder: (_, _) => const SizedBox(width: 16),
+                                  itemBuilder: (context, index) {
+                                    final item = specialItems[index];
+                                    return _DraggableSpecialBowl(
+                                      item: item,
+                                      enabled: !_eating && _specialRemaining(item) == null,
+                                      remaining: _specialRemaining(item),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                         // Always exactly the 3 regular food types — no
                         // scroll needed here, that's only for the special
-                        // foods strip above the card, which grows as more
-                        // get purchased.
+                        // foods strip above, which grows as more get
+                        // purchased.
                         Positioned(
                           bottom: 20,
                           left: 16,
