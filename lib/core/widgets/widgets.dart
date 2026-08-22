@@ -4,6 +4,7 @@ export 'app_outlined_button.dart';
 export 'avatar_stack.dart';
 export 'balance_amount.dart';
 export 'balance_summary_card.dart';
+export 'coin_amount.dart';
 export 'empty_state_box.dart';
 export 'section_header.dart';
 export 'glass/glass_app_bar.dart';

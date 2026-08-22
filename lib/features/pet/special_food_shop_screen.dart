@@ -74,23 +74,13 @@ class _SpecialFoodShopScreenState extends ConsumerState<SpecialFoodShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).extension<GlassTokens>()!;
-
     return GlassScaffold(
       appBar: GlassAppBar(
         title: 'Special Foods',
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Center(
-              child: Text(
-                '$_coins coins',
-                style: TextStyle(
-                  color: t.textSecondary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            child: Center(child: CoinAmount(amount: _coins)),
           ),
         ],
       ),
@@ -225,16 +215,10 @@ class _InventoryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: t.positive.withValues(alpha: 0.12),
+              color: CoinAmount.gold.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              '+${item.coinReward}',
-              style: TextStyle(
-                color: t.positive,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: CoinAmount(amount: item.coinReward, showSign: true),
           ),
         ],
       ),
