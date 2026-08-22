@@ -298,7 +298,6 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                             builder: (context, snapshot) {
                               final specialItems = snapshot.data ?? <FoodInventoryItem>[];
                               final specialBowls = specialItems
-                                  .where((i) => _specialRemaining(i) == null)
                                   .map((i) => _DraggableSpecialBowl(
                                         item: i,
                                         enabled: !_eating && _specialRemaining(i) == null,
@@ -306,7 +305,6 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                                       ))
                                   .toList();
                               final regularBowls = FoodType.values
-                                  .where((f) => _remainingFor(f) == null)
                                   .map((f) => _DraggableFoodBowl(
                                         food: f,
                                         enabled: !_eating && _remainingFor(f) == null,
