@@ -199,68 +199,69 @@ class _EmptyInventoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: t.textPrimary.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.pets, size: 13, color: t.textMuted.withValues(alpha: 0.5)),
-                    const SizedBox(width: 8),
-                    Icon(Icons.set_meal_outlined, size: 26, color: t.textMuted),
-                    const SizedBox(width: 8),
-                    Icon(Icons.pets, size: 13, color: t.textMuted.withValues(alpha: 0.5)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'No special foods in stock.',
-                  style: TextStyle(color: t.textPrimary, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Buy some below!',
-                  style: TextStyle(color: t.textMuted, fontSize: 13),
-                ),
-              ],
+    // Stack + Positioned(bottom: 0, right: 0) rather than a Row, so the cat
+    // sits flush against the card's actual bottom-right corner regardless
+    // of how tall the text column happens to be — Row's crossAxisAlignment
+    // only aligns siblings to each other, not to the card's own edge.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: t.cardColor,
+          border: Border.all(color: t.textPrimary.withValues(alpha: 0.12)),
+        ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 100, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.pets, size: 13, color: t.textMuted.withValues(alpha: 0.5)),
+                      const SizedBox(width: 8),
+                      Icon(Icons.set_meal_outlined, size: 26, color: t.textMuted),
+                      const SizedBox(width: 8),
+                      Icon(Icons.pets, size: 13, color: t.textMuted.withValues(alpha: 0.5)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No special foods in stock.',
+                    style: TextStyle(color: t.textPrimary, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Buy some below!',
+                    style: TextStyle(color: t.textMuted, fontSize: 13),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  'assets/images/pet/cat_content.png',
-                  width: 84,
-                  height: 84,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox(width: 84, height: 84),
-                ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Image.asset(
+                'assets/images/pet/cat_content.png',
+                width: 96,
+                height: 108,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox(width: 96, height: 108),
               ),
-              Positioned(
-                top: -6,
-                right: -6,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: t.cardColor, shape: BoxShape.circle),
-                  child: Icon(Icons.favorite, size: 14, color: t.positive),
-                ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: t.cardColor, shape: BoxShape.circle),
+                child: Icon(Icons.favorite, size: 14, color: t.positive),
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
