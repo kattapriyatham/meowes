@@ -80,12 +80,6 @@ class _SpecialFoodShopScreenState extends ConsumerState<SpecialFoodShopScreen> {
       appBar: GlassAppBar(
         title: 'Special Foods',
         actions: [
-          SoftIconButton(
-            icon: Icons.rice_bowl,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PetFeedDeepLinkScreen()),
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Center(child: _CoinBalancePill(amount: _coins)),
@@ -283,6 +277,9 @@ class _InventoryCard extends StatelessWidget {
     final t = Theme.of(context).extension<GlassTokens>()!;
     return SoftCard(
       padding: const EdgeInsets.all(14),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const PetFeedDeepLinkScreen()),
+      ),
       child: Row(
         children: [
           ClipRRect(
