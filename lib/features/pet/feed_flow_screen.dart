@@ -305,7 +305,7 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                               final specialItems = snapshot.data ?? <FoodInventoryItem>[];
                               if (specialItems.isEmpty) return const SizedBox();
                               return SizedBox(
-                                height: 96,
+                                height: 104,
                                 child: ListView.separated(
                                   scrollDirection: Axis.horizontal,
                                   padding: const EdgeInsets.symmetric(horizontal: 16),
