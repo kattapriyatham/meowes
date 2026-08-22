@@ -536,44 +536,55 @@ class _HappinessBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.positiveTint,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.auto_awesome, color: t.positive, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Special foods = Extra happiness!',
-                  style: TextStyle(color: t.positive, fontWeight: FontWeight.w800, fontSize: 14),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  "Use them to boost your cat's mood and earn more rewards.",
-                  style: TextStyle(color: t.textSecondary, fontSize: 12),
-                ),
-              ],
+    // Stack + Positioned(bottom: 0, right: 0), clipped by the banner's own
+    // ClipRRect, pins the cat flush to the actual corner — same fix as
+    // _EmptyInventoryCard, a Row can only align siblings to each other,
+    // not to the container's edge.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(color: t.positiveTint),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 88, 16),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: t.positive, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Special foods = Extra happiness!',
+                          style: TextStyle(color: t.positive, fontWeight: FontWeight.w800, fontSize: 14),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Use them to boost your cat's mood and earn more rewards.",
+                          style: TextStyle(color: t.textSecondary, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.asset(
-              'assets/images/pet/cat_petting.png',
-              width: 64,
-              height: 64,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const SizedBox(width: 64, height: 64),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Image.asset(
+                'assets/images/pet/cat_petting.png',
+                width: 80,
+                height: 84,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox(width: 80, height: 84),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
