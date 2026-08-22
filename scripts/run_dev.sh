@@ -5,10 +5,11 @@
 # The anon key is fetched fresh from the Supabase API each run via the
 # CLI, rather than stored in the repo or a local .env file.
 #
-# Also sets FEED_TESTING_UNLIMITED=true, which skips the feed screen's
-# client-side cooldown gate (lib/features/pet/feed_flow_screen.dart) for
-# easier repeat testing. It doesn't bypass the server-side cooldown in the
-# feed_pet() RPC — see that file's comment for details.
+# FEED_TESTING_UNLIMITED is set to false, so the feed screen's real
+# client-side cooldown gate (lib/features/pet/feed_flow_screen.dart)
+# applies here same as release builds. Flip to true locally for repeat
+# feed testing — it doesn't bypass the server-side cooldown in the
+# feed_pet() RPC either way, see that file's comment for details.
 #
 # Usage:
 #   scripts/run_dev.sh [device-id] [-- <extra flutter run args>]
@@ -56,5 +57,5 @@ fi
 exec flutter run "${DEVICE_ARGS[@]}" \
   --dart-define="SUPABASE_URL=${SUPABASE_URL}" \
   --dart-define="SUPABASE_ANON_KEY=${ANON_KEY}" \
-  --dart-define="FEED_TESTING_UNLIMITED=true" \
+  --dart-define="FEED_TESTING_UNLIMITED=false" \
   "$@"
