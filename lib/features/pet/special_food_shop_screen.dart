@@ -291,12 +291,53 @@ class _CatalogCard extends StatelessWidget {
                 ],
               ),
             ),
-            PillButton(
-              label: '${food.coinCost}',
-              primary: affordable,
+            _PriceCircle(
+              cost: food.coinCost,
+              affordable: affordable,
               onTap: (busy || !affordable) ? null : onPurchase,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Fixed-diameter circular price badge for a catalog card — PillButton
+/// sizes itself to its label's text width, which reads as a narrow oval
+/// rather than a circle for a short number like a coin cost. FittedBox
+/// shrinks 3-digit costs to still fit the same diameter.
+class _PriceCircle extends StatelessWidget {
+  final int cost;
+  final bool affordable;
+  final VoidCallback? onTap;
+
+  const _PriceCircle({
+    required this.cost,
+    required this.affordable,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    final bg = affordable ? t.brandSolid : t.textPrimary.withValues(alpha: 0.08);
+    final fg = affordable ? t.onBrand : t.textSecondary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: bg),
+        child: FittedBox(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Text(
+              '$cost',
+              style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+          ),
         ),
       ),
     );
