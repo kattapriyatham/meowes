@@ -347,7 +347,7 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                                 child: Text(
                                   'Yum! +$_yumReward Happiness',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Color(0xFFA5D6A7),
                                     fontWeight: FontWeight.w800,
                                     fontSize: 16,
                                     shadows: [
