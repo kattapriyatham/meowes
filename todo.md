@@ -43,10 +43,13 @@
   Also explore pet feeding notifications (hungry, friend fed pet, streak
   milestones) (`lib/features/notifications/notifications_screen.dart`).
 
-- **Add daily checkin system** — Show toast notification with daily checkin
-  coins on first app open each day. Integrate into notifications system
-  (`lib/features/home/home_screen.dart`,
-  `lib/features/notifications/notifications_screen.dart`).
+- ~~**Add daily checkin system**~~ ✅ **DONE** — `daily_check_in()` RPC
+  gates on `last_checkin_at = current_date`, awards +5 coins
+  (`supabase/migrations/20260729121000_pet_companion_rpcs.sql`).
+  `_PetCatWidgetState._loadAndCheckIn()` fires it on Home load and shows
+  a "Daily check-in: +5 coins" SnackBar; `_DailyCheckInCard` in the
+  Activity screen's pending section backs it up
+  (`lib/features/home/home_screen.dart`, `lib/features/activity/activity_screen.dart`).
 
 - ~~**Populate Activity screen with app and pet events** — Show expense events
   (added, settled) and pet activities (purchased with coins) in Activity
