@@ -291,8 +291,8 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                         ),
                         Positioned(
                           bottom: 20,
-                          left: 16,
-                          right: 16,
+                          left: 0,
+                          right: 0,
                           child: FutureBuilder<List<FoodInventoryItem>>(
                             future: _inventoryFuture,
                             builder: (context, snapshot) {
@@ -317,9 +317,23 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                               final allBowls = [...regularBowls, ...specialBowls];
                               if (allBowls.isEmpty) return const SizedBox();
 
-                              return Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: allBowls,
+                              // Fixed spacing instead of spaceEvenly — with
+                              // spaceEvenly, each bowl shrinks the more
+                              // special foods get bought, since they all
+                              // have to fit one fixed-width row. Equal
+                              // spacing that scrolls keeps every bowl the
+                              // same size regardless of count.
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Row(
+                                  children: [
+                                    for (var i = 0; i < allBowls.length; i++) ...[
+                                      if (i > 0) const SizedBox(width: 20),
+                                      allBowls[i],
+                                    ],
+                                  ],
+                                ),
                               );
                             },
                           ),
