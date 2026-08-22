@@ -139,7 +139,7 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
         _yumReward = food.coinReward;
         _showYum = true;
       });
-      await _dismissYumAndPop();
+      await _dismissYum();
     } on FeedCooldownException {
       await minDisplay;
       if (!mounted) return;
@@ -154,15 +154,12 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
     }
   }
 
-  /// Holds the Yum message on screen, fades it out, then pops back to the
-  /// previous screen — same end-to-end timing/behavior the old modal sheet
-  /// had (await sheet, then pop), just without needing a tap to dismiss.
-  Future<void> _dismissYumAndPop() async {
+  /// Holds the Yum message on screen, then fades it out. Stays on the feed
+  /// screen afterward — no auto-return to the previous screen.
+  Future<void> _dismissYum() async {
     await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
     setState(() => _showYum = false);
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _onSpecialDropped(FoodInventoryItem item) async {
@@ -185,7 +182,7 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
       });
       // Refresh inventory
       _inventoryFuture = ref.read(petRepositoryProvider).getFoodInventory();
-      await _dismissYumAndPop();
+      await _dismissYum();
     } on FeedCooldownException {
       await minDisplay;
       if (!mounted) return;
@@ -338,41 +335,25 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                                 .toList(),
                           ),
                         ),
-                        IgnorePointer(
-                          child: Center(
-                            child: AnimatedOpacity(
-                              opacity: _showYum ? 1.0 : 0.0,
-                              duration: const Duration(milliseconds: 400),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.92),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.15),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'Yum!',
-                                      style: TextStyle(
-                                        color: t.textPrimary,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '+$_yumReward Happiness',
-                                      style: TextStyle(color: t.positive, fontWeight: FontWeight.w700, fontSize: 14),
-                                    ),
-                                  ],
+                        Positioned(
+                          top: 12,
+                          left: 0,
+                          right: 0,
+                          child: IgnorePointer(
+                            child: Center(
+                              child: AnimatedOpacity(
+                                opacity: _showYum ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 400),
+                                child: Text(
+                                  'Yum! +$_yumReward Happiness',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                    shadows: [
+                                      Shadow(color: Colors.black45, blurRadius: 8, offset: Offset(0, 2)),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
