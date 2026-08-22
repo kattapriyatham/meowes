@@ -11,8 +11,9 @@ import 'package:meowes_app/features/friends/add_friend_screen.dart'
     show friendRepositoryProvider;
 import 'package:meowes_app/features/friends/friend_detail_screen.dart';
 import 'package:meowes_app/features/friends/friends_screen.dart';
-import 'package:meowes_app/features/notifications/notifications_screen.dart';
+import 'package:meowes_app/features/activity/activity_screen.dart';
 import 'package:meowes_app/features/pet/pet_home_screen.dart';
+import 'package:meowes_app/features/profile/profile_screen.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/friendship.dart';
 import 'package:meowes_app/models/pet.dart';
@@ -29,6 +30,7 @@ class HomeScreen extends ConsumerWidget {
     final client = ref.watch(supabaseClientProvider);
     final friendRepo = ref.watch(friendRepositoryProvider);
     final me = client.auth.currentUser!.id;
+    ref.watch(dataChangedTickerProvider);
 
     return FutureBuilder<AppUser?>(
       future: friendRepo.getMyProfile(),
@@ -115,11 +117,16 @@ class _Header extends StatelessWidget {
         SoftIconButton(
           icon: Icons.notifications_none,
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            MaterialPageRoute(builder: (_) => const ActivityScreen()),
           ),
         ),
         const SizedBox(width: 10),
-        _ProfileAvatarPlaceholder(),
+        GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          ),
+          child: _ProfileAvatarPlaceholder(),
+        ),
       ],
     );
   }
@@ -432,7 +439,7 @@ class _PetCatWidgetState extends ConsumerState<_PetCatWidget> {
                 children: [
                   Icon(_moodIcon(pet.mood), size: 16, color: t.textSecondary),
                   const SizedBox(width: 4),
-                  Icon(Icons.paid, size: 14, color: t.textMuted),
+                  Icon(Icons.pets, size: 14, color: t.textMuted),
                   const SizedBox(width: 2),
                   Text(
                     '${pet.coins}',

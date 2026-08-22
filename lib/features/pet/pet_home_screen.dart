@@ -6,6 +6,7 @@ import 'package:meowes_app/features/pet/activities_screen.dart';
 import 'package:meowes_app/features/pet/feed_flow_screen.dart';
 import 'package:meowes_app/features/pet/memory_journal_screen.dart';
 import 'package:meowes_app/features/pet/pet_interaction_screen.dart';
+import 'package:meowes_app/features/pet/special_food_shop_screen.dart';
 import 'package:meowes_app/models/pet.dart';
 import 'package:meowes_app/repositories/pet_repository.dart';
 
@@ -123,7 +124,7 @@ class _PetHomeScreenState extends ConsumerState<PetHomeScreen> {
                     ),
                     child: Center(
                       child: Text(
-                        'Your Pet',
+                        pet.name,
                         style: TextStyle(
                           color: t.textPrimary,
                           fontWeight: FontWeight.w800,
@@ -221,7 +222,7 @@ class _PetHomeScreenState extends ConsumerState<PetHomeScreen> {
                               ),
                               const SizedBox(width: 10),
                               _StatPill(
-                                icon: Icons.paid,
+                                icon: Icons.pets,
                                 label: '${pet.coins} coins',
                               ),
                             ],
@@ -328,6 +329,47 @@ class _PetHomeScreenState extends ConsumerState<PetHomeScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   'Spend coins on time with your cat',
+                                  style: TextStyle(
+                                    color: t.textMuted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: t.textMuted),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SoftCard(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SpecialFoodShopScreen(),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          _IconChip(icon: Icons.set_meal_outlined),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Special Foods',
+                                  style: TextStyle(
+                                    color: t.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Buy premium food with limited uses',
                                   style: TextStyle(
                                     color: t.textMuted,
                                     fontSize: 12,

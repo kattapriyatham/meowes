@@ -31,7 +31,7 @@ class CoinAmount extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.paid, size: iconSize, color: gold),
+        Icon(Icons.pets, size: iconSize, color: gold),
         const SizedBox(width: 4),
         Text(
           text,
