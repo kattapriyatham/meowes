@@ -216,7 +216,38 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              // Special foods get their own scrollable strip here, above
+              // the cat — separate from the fixed 3-item regular row below.
+              // The regular row never grows, but special-food inventory
+              // does as more get purchased, and needs to scroll
+              // independently rather than squeezing into a shared row.
+              FutureBuilder<List<FoodInventoryItem>>(
+                future: _inventoryFuture,
+                builder: (context, snapshot) {
+                  final specialItems = snapshot.data ?? <FoodInventoryItem>[];
+                  if (specialItems.isEmpty) return const SizedBox();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SizedBox(
+                      height: 96,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: specialItems.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 16),
+                        itemBuilder: (context, index) {
+                          final item = specialItems[index];
+                          return _DraggableSpecialBowl(
+                            item: item,
+                            enabled: !_eating && _specialRemaining(item) == null,
+                            remaining: _specialRemaining(item),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
               Expanded(
                 child: SoftCard(
                   padding: EdgeInsets.zero,
@@ -289,53 +320,24 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
                             );
                           },
                         ),
+                        // Always exactly the 3 regular food types — no
+                        // scroll needed here, that's only for the special
+                        // foods strip above the card, which grows as more
+                        // get purchased.
                         Positioned(
                           bottom: 20,
-                          left: 0,
-                          right: 0,
-                          child: FutureBuilder<List<FoodInventoryItem>>(
-                            future: _inventoryFuture,
-                            builder: (context, snapshot) {
-                              final specialItems = snapshot.data ?? <FoodInventoryItem>[];
-                              final specialBowls = specialItems
-                                  .map((i) => _DraggableSpecialBowl(
-                                        item: i,
-                                        enabled: !_eating && _specialRemaining(i) == null,
-                                        remaining: _specialRemaining(i),
-                                      ))
-                                  .toList();
-                              final regularBowls = FoodType.values
-                                  .map((f) => _DraggableFoodBowl(
-                                        food: f,
-                                        enabled: !_eating && _remainingFor(f) == null,
-                                        remaining: _remainingFor(f),
-                                        highlighted: f == widget.highlightFood,
-                                      ))
-                                  .toList();
-
-                              // Show regular first, then specials
-                              final allBowls = [...regularBowls, ...specialBowls];
-                              if (allBowls.isEmpty) return const SizedBox();
-
-                              // Fixed spacing instead of spaceEvenly — with
-                              // spaceEvenly, each bowl shrinks the more
-                              // special foods get bought, since they all
-                              // have to fit one fixed-width row. Equal
-                              // spacing that scrolls keeps every bowl the
-                              // same size regardless of count.
-                              return SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Row(
-                                  children: [
-                                    for (var i = 0; i < allBowls.length; i++) ...[
-                                      if (i > 0) const SizedBox(width: 20),
-                                      allBowls[i],
-                                    ],
-                                  ],
-                                ),
-                              );
-                            },
+                          left: 16,
+                          right: 16,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: FoodType.values
+                                .map((f) => _DraggableFoodBowl(
+                                      food: f,
+                                      enabled: !_eating && _remainingFor(f) == null,
+                                      remaining: _remainingFor(f),
+                                      highlighted: f == widget.highlightFood,
+                                    ))
+                                .toList(),
                           ),
                         ),
                       ],

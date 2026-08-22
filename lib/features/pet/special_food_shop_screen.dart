@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
+import 'package:meowes_app/features/pet/pet_feed_deep_link_screen.dart';
 import 'package:meowes_app/models/pet.dart';
 import 'package:meowes_app/models/special_food.dart';
 import 'package:meowes_app/repositories/pet_repository.dart';
@@ -79,6 +80,12 @@ class _SpecialFoodShopScreenState extends ConsumerState<SpecialFoodShopScreen> {
       appBar: GlassAppBar(
         title: 'Special Foods',
         actions: [
+          SoftIconButton(
+            icon: Icons.rice_bowl,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PetFeedDeepLinkScreen()),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Center(child: _CoinBalancePill(amount: _coins)),
