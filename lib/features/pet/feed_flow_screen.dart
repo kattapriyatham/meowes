@@ -204,19 +204,6 @@ class _FeedFlowScreenState extends ConsumerState<FeedFlowScreen> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             children: [
-              FutureBuilder<List<FoodInventoryItem>>(
-                future: _inventoryFuture,
-                builder: (context, snapshot) {
-                  final specialItems = snapshot.data ?? <FoodInventoryItem>[];
-                  final anyAvailable = _anyRegularAvailable ||
-                      specialItems.any((i) => _specialRemaining(i) == null);
-                  return Text(
-                    anyAvailable ? 'Drag food to your cat' : 'All full for now',
-                    style: TextStyle(color: t.textSecondary, fontSize: 14),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
               Expanded(
                 child: SoftCard(
                   padding: EdgeInsets.zero,
