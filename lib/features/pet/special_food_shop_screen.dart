@@ -207,6 +207,7 @@ class _EmptyInventoryCard extends StatelessWidget {
         border: Border.all(color: t.textPrimary.withValues(alpha: 0.12)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: Column(
