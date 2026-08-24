@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "415049137423",
+    "project_id": "meowes-b2e69",
+    "storage_bucket": "meowes-b2e69.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:415049137423:android:e07143302cbdfa257b927a",
+        "android_client_info": {
+          "package_name": "com.meowes.meowesApp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCD4kKuOM-mz9pjOe2ZTEmbz1RRCWRnYIo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:415049137423:android:4f19fac9cf5483757b927a",
+        "android_client_info": {
+          "package_name": "com.meowes.meowes_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCD4kKuOM-mz9pjOe2ZTEmbz1RRCWRnYIo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
