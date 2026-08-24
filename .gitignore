@@ -53,3 +53,15 @@ supabase/.temp/
 
 # Local Claude Code session state (not project source)
 .claude/
+
+# Firebase service-account key (used once to seed the Supabase Edge
+# Function secret, never meant to live in the repo — see
+# supabase/functions/send-push).
+docs/google-service-key.json
+docs/firebase-key.json
+
+# Local-only design exploration (source art, screenshots, inspiration) —
+# too heavy for the repo; the shipped assets live under assets/.
+docs/designs/
+docs/ss/
+docs/landing-page-inspo/
