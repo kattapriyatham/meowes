@@ -63,6 +63,7 @@ void main() {
 
   final samplePetJson = {
     'user_id': 'user-1',
+    'name': 'Whiskers',
     'coins': 27,
     'mood_score': 70,
     'last_care_at': '2026-07-29T10:00:00.000Z',

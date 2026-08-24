@@ -8,6 +8,8 @@ import 'package:meowes_app/features/auth/sign_in_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart'
     show friendRepositoryProvider;
 import 'package:meowes_app/models/app_user.dart';
+import 'package:meowes_app/models/pet.dart';
+import 'package:meowes_app/repositories/pet_repository.dart';
 
 // Re-exported so screens/tests that only import this file (rather than the
 // friend-add screen where it happens to be declared) can still reach the
@@ -22,6 +24,11 @@ export 'package:meowes_app/features/friends/add_friend_screen.dart'
 /// skeleton loader again.
 final myProfileProvider = FutureProvider.autoDispose<AppUser?>(
   (ref) => ref.watch(friendRepositoryProvider).getMyProfile(),
+);
+
+/// Mirrors [myProfileProvider]'s caching rationale, for the pet-name editor.
+final myPetProvider = FutureProvider.autoDispose<Pet>(
+  (ref) => ref.watch(petRepositoryProvider).getOrCreatePet(),
 );
 
 /// Profile tab: glass header with avatar/name and a sign-out action.
@@ -46,6 +53,8 @@ class ProfileScreen extends ConsumerWidget {
               loading: profileAsync.isLoading,
             ),
             const SizedBox(height: 16),
+            const _PetNameCard(),
+            const SizedBox(height: 16),
             GlassButton(
               label: 'Sign out',
               secondary: true,
@@ -66,6 +75,76 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Editable pet-name row: shows the current name and opens a dialog to
+/// rename, saving straight to the `pets` row (RLS scopes it to the owner).
+class _PetNameCard extends ConsumerWidget {
+  const _PetNameCard();
+
+  Future<void> _editName(BuildContext context, WidgetRef ref, String current) async {
+    final controller = TextEditingController(text: current);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Pet's name"),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 30,
+          decoration: const InputDecoration(hintText: 'Enter a name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty || newName == current) return;
+    await ref.read(petRepositoryProvider).updateName(newName);
+    ref.invalidate(myPetProvider);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = Theme.of(context).extension<GlassTokens>()!;
+    final petAsync = ref.watch(myPetProvider);
+
+    return GlassCard(
+      child: Row(
+        children: [
+          Icon(Icons.pets, color: t.textSecondary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: petAsync.when(
+              loading: () => const SkeletonLoader(height: 18, width: 100),
+              error: (_, _) => Text('Pet name', style: TextStyle(color: t.textSecondary)),
+              data: (pet) => Text(
+                pet.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: t.textPrimary,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.edit_outlined, color: t.textSecondary),
+            onPressed: petAsync.asData == null
+                ? null
+                : () => _editName(context, ref, petAsync.asData!.value.name),
+          ),
+        ],
       ),
     );
   }

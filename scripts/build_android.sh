@@ -58,8 +58,20 @@ case "${1:-}" in
     ;;
 esac
 
-exec flutter build apk "--$MODE" \
-  --dart-define="SUPABASE_URL=${SUPABASE_URL}" \
-  --dart-define="SUPABASE_ANON_KEY=${ANON_KEY}" \
-  --dart-define="FEED_TESTING_UNLIMITED=true" \
-  "$@"
+# Only debug builds skip the feed cooldown gate (see the flag's doc comment
+# in lib/features/pet/feed_flow_screen.dart) — release/profile builds
+# should behave like the real app, cooldown included. Branched into two
+# exec calls rather than building an optional array: macOS ships bash 3.2,
+# where "${arr[@]}" on an empty array errors out under `set -u`.
+if [[ "$MODE" == "debug" ]]; then
+  exec flutter build apk "--$MODE" \
+    --dart-define="SUPABASE_URL=${SUPABASE_URL}" \
+    --dart-define="SUPABASE_ANON_KEY=${ANON_KEY}" \
+    --dart-define="FEED_TESTING_UNLIMITED=true" \
+    "$@"
+else
+  exec flutter build apk "--$MODE" \
+    --dart-define="SUPABASE_URL=${SUPABASE_URL}" \
+    --dart-define="SUPABASE_ANON_KEY=${ANON_KEY}" \
+    "$@"
+fi
