@@ -1,6 +1,7 @@
 // lib/features/expenses/add_expense_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meowes_app/core/async_action.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
@@ -111,6 +112,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       if (sharing) {
         _sharingIds.add(id);
       } else {
+        if (_sharingIds.length <= 1) return;
         _sharingIds.remove(id);
       }
     });
@@ -119,9 +121,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   void _toggleSelectAll() {
     setState(() {
-      _sharingIds = _sharingIds.length == widget.participantIds.length
-          ? {}
-          : Set.of(widget.participantIds);
+      if (_sharingIds.length == widget.participantIds.length) {
+        _sharingIds = {widget.participantIds.first};
+      } else {
+        _sharingIds = Set.of(widget.participantIds);
+      }
     });
     _resetSplitsToEven();
   }
@@ -349,30 +353,37 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                             final exactAmounts =
                                 _splitType == SplitType.exact ? _computeExactSharesInPaise() : null;
 
-                            if (isEditing) {
-                              await repo.editExpense(
-                                expenseId: widget.editing!.id,
-                                description: _descriptionController.text.trim(),
-                                amountMinorUnits: amountMinorUnits,
-                                splitType: _splitType,
-                                participantIds: sharingIds,
-                                percentages: percentages,
-                                exactAmounts: exactAmounts,
-                              );
-                            } else {
-                              await repo.createExpense(
-                                description: _descriptionController.text.trim(),
-                                amountMinorUnits: amountMinorUnits,
-                                groupId: widget.groupId,
-                                paidBy: _paidBy,
-                                splitType: _splitType,
-                                participantIds: sharingIds,
-                                percentages: percentages,
-                                exactAmounts: exactAmounts,
-                                expenseDate: DateTime.now(),
-                              );
-                            }
-                            if (context.mounted) Navigator.of(context).pop();
+                            final ok = await runAction(
+                              context,
+                              ref,
+                              action: () async {
+                                if (isEditing) {
+                                  await repo.editExpense(
+                                    expenseId: widget.editing!.id,
+                                    description: _descriptionController.text.trim(),
+                                    amountMinorUnits: amountMinorUnits,
+                                    splitType: _splitType,
+                                    participantIds: sharingIds,
+                                    percentages: percentages,
+                                    exactAmounts: exactAmounts,
+                                  );
+                                } else {
+                                  await repo.createExpense(
+                                    description: _descriptionController.text.trim(),
+                                    amountMinorUnits: amountMinorUnits,
+                                    groupId: widget.groupId,
+                                    paidBy: _paidBy,
+                                    splitType: _splitType,
+                                    participantIds: sharingIds,
+                                    percentages: percentages,
+                                    exactAmounts: exactAmounts,
+                                    expenseDate: DateTime.now(),
+                                  );
+                                }
+                              },
+                              successMessage: isEditing ? 'Expense updated' : 'Expense added',
+                            );
+                            if (ok && context.mounted) Navigator.of(context).pop();
                           }
                         : null,
                   ),
@@ -618,13 +629,7 @@ class _SharingSplitCard extends StatelessWidget {
             ],
           ),
         ),
-        if (sharingIds.isEmpty) ...[
-          const SizedBox(height: 10),
-          Text(
-            'Pick at least one person to share this expense with.',
-            style: TextStyle(color: t.negative, fontWeight: FontWeight.w600),
-          ),
-        ] else if (!isEqual) ...[
+        if (!isEqual) ...[
           const SizedBox(height: 14),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),

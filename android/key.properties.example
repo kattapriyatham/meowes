@@ -1,0 +1,14 @@
+# Copy to android/key.properties (git-ignored) and fill in for a Play-ready
+# release build. Generate the keystore once:
+#
+#   keytool -genkey -v -keystore ~/meowes-upload.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# Keep the .jks file and these passwords backed up somewhere safe — losing
+# them means you can never ship an update under the same app identity
+# (unless enrolled in Play App Signing, which is strongly recommended).
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=/absolute/path/to/meowes-upload.jks

@@ -1,6 +1,8 @@
 // lib/features/expenses/expense_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meowes_app/core/async_action.dart';
+import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
@@ -9,11 +11,13 @@ import 'package:meowes_app/models/expense.dart';
 import 'package:meowes_app/models/expense_split.dart';
 import 'package:meowes_app/repositories/expense_repository.dart';
 import 'package:meowes_app/features/expenses/add_expense_screen.dart';
+import 'package:meowes_app/features/moderation/report_sheet.dart';
 
 class _ExpenseDetailData {
+  final Expense expense;
   final List<ExpenseSplit> splits;
   final Map<String, String> namesById;
-  const _ExpenseDetailData({required this.splits, required this.namesById});
+  const _ExpenseDetailData({required this.expense, required this.splits, required this.namesById});
 }
 
 class ExpenseDetailScreen extends ConsumerWidget {
@@ -23,37 +27,56 @@ class ExpenseDetailScreen extends ConsumerWidget {
   Future<_ExpenseDetailData> _load(WidgetRef ref) async {
     final repo = ref.read(expenseRepositoryProvider);
     final friendRepo = ref.read(friendRepositoryProvider);
+    final freshExpense = await repo.getExpenseById(expense.id);
     final splits = await repo.getExpenseSplits(expense.id);
     final participantIds = splits.map((s) => s.userId).toList();
     final profiles =
         participantIds.isEmpty ? <AppUser>[] : await friendRepo.getPublicProfiles(participantIds);
     final namesById = {for (final p in profiles) p.id: p.name};
-    return _ExpenseDetailData(splits: splits, namesById: namesById);
+    return _ExpenseDetailData(expense: freshExpense, splits: splits, namesById: namesById);
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(expenseRepositoryProvider);
+    ref.watch(dataChangedTickerProvider);
     final t = Theme.of(context).extension<GlassTokens>()!;
-    return GlassScaffold(
-      appBar: GlassAppBar(title: expense.description),
-      body: SafeArea(
-        child: FutureBuilder<_ExpenseDetailData>(
-          future: _load(ref),
-          builder: (context, snapshot) {
-            final data = snapshot.data ?? const _ExpenseDetailData(splits: [], namesById: {});
-            String nameOf(String id) => data.namesById[id] ?? 'Unknown';
+    return FutureBuilder<_ExpenseDetailData>(
+      future: _load(ref),
+      builder: (context, snapshot) {
+        final data = snapshot.data ??
+            _ExpenseDetailData(expense: expense, splits: const [], namesById: const {});
+        final current = data.expense;
+        String nameOf(String id) => data.namesById[id] ?? 'Unknown';
 
-            return Padding(
+        return GlassScaffold(
+          appBar: GlassAppBar(
+            title: current.description,
+            actions: [
+              IconButton(
+                tooltip: 'Report',
+                icon: const Icon(Icons.flag_outlined),
+                onPressed: () => showReportSheet(
+                  context,
+                  ref,
+                  targetType: 'expense',
+                  targetId: current.id,
+                  title: 'Report this expense',
+                ),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: Padding(
               padding: const EdgeInsets.all(20),
               child: ListView(
                 children: [
                   Text(
-                    '₹${(expense.amountMinorUnits / 100).toStringAsFixed(2)}',
+                    '₹${(current.amountMinorUnits / 100).toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: t.textPrimary),
                   ),
                   const SizedBox(height: 4),
-                  if (expense.isEdited)
+                  if (current.isEdited)
                     Text('Edited', style: TextStyle(color: t.textMuted, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 24),
                   const SectionHeader(title: 'Split between'),
@@ -98,9 +121,9 @@ class ExpenseDetailScreen extends ConsumerWidget {
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => AddExpenseScreen(
-                                groupId: expense.groupId,
+                                groupId: current.groupId,
                                 participantIds: data.splits.map((s) => s.userId).toList(),
-                                editing: expense,
+                                editing: current,
                                 existingSplits: data.splits,
                               ),
                             ),
@@ -113,8 +136,33 @@ class ExpenseDetailScreen extends ConsumerWidget {
                           label: 'Delete',
                           primary: false,
                           onTap: () async {
-                            await repo.deleteExpense(expense.id);
-                            if (context.mounted) Navigator.of(context).pop();
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text('Delete expense?'),
+                                content: Text(
+                                  '"${data.expense.description}" will be removed for everyone it\'s split with.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed != true || !context.mounted) return;
+                            final ok = await runAction(
+                              context,
+                              ref,
+                              action: () => repo.deleteExpense(expense.id),
+                              successMessage: 'Expense deleted',
+                            );
+                            if (ok && context.mounted) Navigator.of(context).pop();
                           },
                         ),
                       ),
@@ -122,10 +170,10 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

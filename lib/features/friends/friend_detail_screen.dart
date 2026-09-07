@@ -1,7 +1,9 @@
 // lib/features/friends/friend_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meowes_app/core/async_action.dart';
 import 'package:meowes_app/core/supabase_client.dart';
+import 'package:meowes_app/features/moderation/report_sheet.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/expenses/add_expense_screen.dart';
@@ -37,10 +39,57 @@ class FriendDetailScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _onMenu(
+      BuildContext context, WidgetRef ref, String action, String name) async {
+    if (action == 'report') {
+      await showReportSheet(
+        context,
+        ref,
+        targetType: 'user',
+        targetId: friendUserId,
+        title: 'Report $name',
+      );
+      return;
+    }
+
+    final isBlock = action == 'block';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isBlock ? 'Block $name?' : 'Remove $name?'),
+        content: Text(isBlock
+            ? "$name won't be able to add you back or send you reminders. Your shared expense history stays."
+            : 'This removes the friendship. Your shared expense history stays.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(isBlock ? 'Block' : 'Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final repo = ref.read(friendRepositoryProvider);
+    final ok = await runAction(
+      context,
+      ref,
+      action: () =>
+          isBlock ? repo.blockUser(friendUserId) : repo.removeFriend(friendUserId),
+      successMessage: isBlock ? '$name blocked' : '$name removed',
+    );
+    if (ok && context.mounted) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final client = ref.watch(supabaseClientProvider);
     final me = client.auth.currentUser!.id;
+    ref.watch(dataChangedTickerProvider);
     return FutureBuilder<_FriendDetailData>(
       future: _load(ref),
       builder: (context, snapshot) {
@@ -52,8 +101,22 @@ class FriendDetailScreen extends ConsumerWidget {
         // only makes sense when I'm the one who owes — offering it when
         // the friend owes me would record a payment in the wrong direction.
         final iOwe = balance < -0.005;
+        final theyOwe = balance > 0.005;
         return GlassScaffold(
-          appBar: GlassAppBar(title: data.name ?? 'Friend'),
+          appBar: GlassAppBar(
+            title: data.name ?? 'Friend',
+            actions: [
+              PopupMenuButton<String>(
+                onSelected: (value) =>
+                    _onMenu(context, ref, value, data.name ?? 'this person'),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'report', child: Text('Report')),
+                  PopupMenuItem(value: 'block', child: Text('Block')),
+                  PopupMenuItem(value: 'remove', child: Text('Remove friend')),
+                ],
+              ),
+            ],
+          ),
           body: SafeArea(
             child: ListView(
               padding: const EdgeInsets.all(20),
@@ -86,8 +149,26 @@ class FriendDetailScreen extends ConsumerWidget {
                               builder: (_) => SettleUpScreen(
                                 toUser: friendUserId,
                                 amountMinorUnits: (balance.abs() * 100).round(),
+                                toUserName: data.name,
                               ),
                             ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (theyOwe) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: PillButton(
+                          label: 'Remind',
+                          primary: false,
+                          onTap: () => runAction(
+                            context,
+                            ref,
+                            notifyData: false,
+                            action: () =>
+                                ref.read(friendRepositoryProvider).sendFriendRemind(friendUserId),
+                            successMessage: 'Reminder sent to ${data.name ?? "your friend"}',
                           ),
                         ),
                       ),

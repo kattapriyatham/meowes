@@ -1,12 +1,25 @@
 // lib/features/friends/add_friend_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:meowes_app/core/async_action.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/friendship.dart';
 import 'package:meowes_app/repositories/friend_repository.dart';
+
+/// Opens the share sheet with this user's personal invite link
+/// (`meowes://invite/<code>`, handled in `lib/main.dart`). Redeeming it
+/// creates an already-accepted friendship — see `join_friendship_by_code`
+/// (supabase/migrations/20260815130000_friend_invite_links.sql).
+Future<void> shareInviteLink(FriendRepository repo) async {
+  final code = await repo.getMyInviteCode();
+  await SharePlus.instance.share(
+    ShareParams(text: 'Add me on Meowes! meowes://invite/$code'),
+  );
+}
 
 final friendRepositoryProvider = Provider<FriendRepository>(
   (ref) => FriendRepository(ref.watch(supabaseClientProvider)),
@@ -36,6 +49,40 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            SoftCard(
+              child: InkWell(
+                onTap: () => shareInviteLink(repo),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: t.positiveTint, shape: BoxShape.circle),
+                      child: Icon(Icons.link, color: t.positive, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Share invite link',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: t.textPrimary),
+                          ),
+                          Text(
+                            'Anyone who opens it joins as your friend instantly',
+                            style: TextStyle(fontSize: 12, color: t.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.ios_share, size: 18, color: t.textSecondary),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             StreamBuilder<List<Friendship>>(
               stream: repo.watchFriendships(),
               builder: (context, snapshot) {
@@ -97,11 +144,21 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
               child: PillButton(
                 label: 'Search',
                 onTap: () async {
-                  final result = await repo.searchByPhone(_phoneController.text.trim());
-                  setState(() {
-                    _found = result;
-                    _searched = true;
-                  });
+                  AppUser? result;
+                  final ok = await runAction(
+                    context,
+                    ref,
+                    notifyData: false,
+                    action: () async {
+                      result = await repo.searchByPhone(_phoneController.text.trim());
+                    },
+                  );
+                  if (ok) {
+                    setState(() {
+                      _found = result;
+                      _searched = true;
+                    });
+                  }
                 },
               ),
             ),
@@ -122,8 +179,13 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
                       label: 'Send request',
                       dense: true,
                       onTap: () async {
-                        await repo.sendFriendRequest(_found!.id);
-                        if (context.mounted) Navigator.of(context).pop();
+                        final ok = await runAction(
+                          context,
+                          ref,
+                          action: () => repo.sendFriendRequest(_found!.id),
+                          successMessage: 'Friend request sent',
+                        );
+                        if (ok && context.mounted) Navigator.of(context).pop();
                       },
                     ),
                   ],
@@ -132,13 +194,13 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
             ],
             if (_searched && _found == null) ...[
               const SizedBox(height: 16),
-              Text(
-                'Not registered yet — share an invite link instead.',
-                style: TextStyle(color: t.textMuted),
+              GestureDetector(
+                onTap: () => shareInviteLink(repo),
+                child: Text(
+                  'Not registered yet — share an invite link instead.',
+                  style: TextStyle(color: t.textMuted, decoration: TextDecoration.underline),
+                ),
               ),
-              // Invite-link generation reuses the group invite_code mechanism
-              // from Task 9 and is wired as a share-sheet action, not a new
-              // backend concept.
             ],
           ],
         ),

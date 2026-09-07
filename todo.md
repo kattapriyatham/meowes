@@ -1,6 +1,6 @@
 # Todo
 
-- **iOS push notifications** — Real push (FCM) is live and verified on
+- ⏸️ **DEFERRED** — **iOS push notifications** — Real push (FCM) is live and verified on
   Android: expense-involvement + pet-hunger pushes, via `pg_net`/`pg_cron`
   triggers → `send-push` Edge Function (`supabase/functions/send-push`) →
   FCM. iOS needs an Apple Developer account + APNs auth key uploaded to
@@ -63,10 +63,11 @@
 
 - ~~**Check iOS build** — Verify iOS app builds successfully without errors.~~ ✅ **DONE**
 
-- **Verify profile setup flow** — Profile setup should only show on first signup.
-  Current code in `RootScreen` checks for `users` row existence, which should
-  work correctly. Verify this behavior is working as expected
-  (`lib/features/root/root_screen.dart`).
+- ~~**Verify profile setup flow**~~ ✅ **DONE** — `RootScreen` only renders
+  `ProfileSetupScreen` when `users` row is absent; `upsertProfile()` is an
+  upsert (double-run safe) and navigates to `HomeShell`. On later launches the
+  row exists so it routes to `HomeShell`. Logic verified by inspection
+  (`lib/features/root/root_screen.dart`, `lib/features/auth/profile_setup_screen.dart`).
 
 - ~~**Customize pet feeding notifications per food item**~~ ✅ **DONE** — Each
   food type fires its own hunger push independently (`hungry_notified_fish`/
@@ -97,5 +98,32 @@
   and friends from Splitwise. Use Splitwise API to fetch user's expenses and
   group data.
 
-- **Build marketing landing page** — Create landing page to showcase Meowes app
-  features, benefits, and call-to-action for sign up.
+- **Build marketing landing page** — Landing page exists at `site/index.html`
+  (features, screenshots, CTA). Served with the legal pages via Firebase Hosting
+  (`firebase.json` hosting block, `public: "site"`). Still TODO: real store-badge
+  / download links (currently `#`), and `firebase deploy --only hosting`.
+
+- ~~**Fix auth buttons**~~ ✅ **DONE** — Removed the "Continue with Apple"
+  button from `sign_in_screen.dart`. Replaced the gradient-shader "G" hack with
+  the official four-colour Google "G" rendered from its real SVG path data via a
+  new dependency-free parser (`lib/core/util/svg_path.dart`,
+  `test/core/util/svg_path_test.dart`, `_GoogleGPainter` in
+  `lib/features/auth/sign_in_screen.dart`).
+
+- ~~**Sync pet feeding notification cadence with cooloff timers**~~ ✅ **DONE**
+  — Already aligned since the independent-cooldowns work. One source of truth:
+  `food_satiation_hours()` (fish 6h, dry_food 4h, treats 12h) drives the feed
+  cooldown, the hunger-decay window, *and* the `check_hungry_pets()` notify
+  threshold (`supabase/migrations/20260815110000_*`,
+  `20260822100000_per_food_hunger_notifications.sql`). Client
+  `Food.satiationDuration` mirrors the same numbers. Cron runs every 15 min so a
+  hunger push fires within ≤15 min of a food's cooloff expiring.
+
+- ~~**Remove "Your financial journey, our priority" line**~~ ✅ **DONE** —
+  Deleted the subtitle from `_Header` in `lib/features/home/home_screen.dart`.
+
+- **Store submission readiness** — full task list + progress tracker in
+  `docs/store_readiness.md` (21 tasks: 7 P0 blockers, 6 P1, 8 P2). Covers
+  in-app account deletion, Sign in with Apple for iOS (note: the auth-button
+  change above removed it and Guideline 4.8 needs it back on iOS), report/block
+  users, hosted privacy/terms/deletion pages, release signing, store metadata.

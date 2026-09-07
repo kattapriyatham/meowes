@@ -93,11 +93,6 @@ class _Header extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Your financial journey, our priority',
-                style: TextStyle(color: t.textSecondary, fontSize: 13),
-              ),
             ],
           ),
         ),

@@ -1,10 +1,12 @@
 // lib/features/profile/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meowes_app/core/async_action.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/auth/sign_in_screen.dart';
+import 'package:meowes_app/features/profile/delete_account_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart'
     show friendRepositoryProvider;
 import 'package:meowes_app/models/app_user.dart';
@@ -73,6 +75,21 @@ class ProfileScreen extends ConsumerWidget {
                 }
               },
             ),
+            const SizedBox(height: 32),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DeleteAccountScreen()),
+                ),
+                child: Text(
+                  'Delete account',
+                  style: TextStyle(
+                    color: Theme.of(context).extension<GlassTokens>()!.negative,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -110,7 +127,14 @@ class _PetNameCard extends ConsumerWidget {
       ),
     );
     if (newName == null || newName.isEmpty || newName == current) return;
-    await ref.read(petRepositoryProvider).updateName(newName);
+    if (!context.mounted) return;
+    await runAction(
+      context,
+      ref,
+      action: () => ref.read(petRepositoryProvider).updateName(newName),
+      successMessage: 'Pet renamed to $newName',
+      notifyData: false,
+    );
     ref.invalidate(myPetProvider);
   }
 

@@ -13,7 +13,6 @@ class GlassNavDock extends StatelessWidget {
     (icon: Icons.people_outline, activeIcon: Icons.people, label: 'Friends'),
     (icon: Icons.grid_view_outlined, activeIcon: Icons.grid_view, label: 'Groups'),
     (icon: Icons.show_chart, activeIcon: Icons.show_chart, label: 'Activity'),
-    (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
   ];
 
   @override

@@ -5,7 +5,6 @@ import 'package:meowes_app/features/friends/friends_screen.dart';
 import 'package:meowes_app/features/groups/groups_screen.dart';
 import 'package:meowes_app/features/activity/activity_screen.dart';
 import 'package:meowes_app/features/pet/pet_home_screen.dart';
-import 'package:meowes_app/features/profile/profile_screen.dart';
 
 /// The signed-in app shell: an [IndexedStack] of the five tab screens with
 /// the floating [GlassNavDock] overlaid at the bottom. Deliberately NOT a
@@ -26,7 +25,6 @@ class _HomeShellState extends State<HomeShell> {
     FriendsScreen(),
     GroupsScreen(),
     ActivityScreen(),
-    ProfileScreen(),
   ];
 
   @override

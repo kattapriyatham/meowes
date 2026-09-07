@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Meowes App</string>
+	<string>Meowes</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -32,6 +32,16 @@
 				<!-- Reversed iOS OAuth client ID, required by google_sign_in
 				     for the sign-in flow to return to the app. -->
 				<string>com.googleusercontent.apps.470887959516-nj02hs0qfrukv7910fnvlfjab7c2a7s6</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Friend invite links (meowes://invite/<code>), handled by
+				     app_links in lib/main.dart. -->
+				<string>meowes</string>
 			</array>
 		</dict>
 	</array>

@@ -24,6 +24,7 @@ class FriendsScreen extends ConsumerWidget {
     final client = ref.watch(supabaseClientProvider);
     final friendRepo = ref.watch(friendRepositoryProvider);
     final me = client.auth.currentUser!.id;
+    ref.watch(dataChangedTickerProvider);
 
     return GlassScaffold(
       appBar: GlassAppBar(

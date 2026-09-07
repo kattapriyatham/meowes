@@ -8,6 +8,7 @@ import 'package:meowes_app/core/widgets/widgets.dart';
 import 'package:meowes_app/features/expenses/add_expense_screen.dart';
 import 'package:meowes_app/features/expenses/expense_detail_screen.dart';
 import 'package:meowes_app/features/friends/add_friend_screen.dart' show friendRepositoryProvider;
+import 'package:meowes_app/features/moderation/report_sheet.dart';
 import 'package:meowes_app/features/settlements/settle_up_screen.dart';
 import 'package:meowes_app/models/app_user.dart';
 import 'package:meowes_app/models/expense.dart';
@@ -53,7 +54,22 @@ class GroupDetailScreen extends ConsumerWidget {
         final participantIds = [me, ...data.memberIds.where((id) => id != me)];
 
         return GlassScaffold(
-          appBar: const GlassAppBar(title: 'Group'),
+          appBar: GlassAppBar(
+            title: 'Group',
+            actions: [
+              IconButton(
+                tooltip: 'Report',
+                icon: const Icon(Icons.flag_outlined),
+                onPressed: () => showReportSheet(
+                  context,
+                  ref,
+                  targetType: 'group',
+                  targetId: groupId,
+                  title: 'Report this group',
+                ),
+              ),
+            ],
+          ),
           body: SafeArea(
             child: Stack(
               children: [
@@ -197,6 +213,7 @@ class _DebtRow extends StatelessWidget {
                   toUser: debt['to_user'] as String,
                   amountMinorUnits: (double.parse(debt['amount'].toString()) * 100).round(),
                   groupId: groupId,
+                  toUserName: nameOf(debt['to_user'] as String),
                 ),
               ),
             )

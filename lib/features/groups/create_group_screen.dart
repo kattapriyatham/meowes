@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meowes_app/core/async_action.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
@@ -26,20 +27,30 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   Group? _created;
 
   Future<void> _handleCreate(GroupRepository repo) async {
-    final group = await repo.createGroup(_nameController.text.trim());
-    if (!mounted) return;
-    setState(() => _created = group);
+    Group? group;
+    final ok = await runAction(
+      context,
+      ref,
+      notifyData: false,
+      action: () async {
+        group = await repo.createGroup(_nameController.text.trim());
+      },
+    );
+    if (ok && mounted) setState(() => _created = group);
   }
 
   Future<void> _handleJoin(GroupRepository repo) async {
-    try {
-      final group = await repo.joinByInviteCode(_codeController.text.trim());
-      if (!mounted) return;
-      setState(() => _created = group);
-    } on StateError catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-    }
+    Group? group;
+    final ok = await runAction(
+      context,
+      ref,
+      notifyData: false,
+      errorMessage: (e) => e is StateError ? e.message : 'Could not join that group.',
+      action: () async {
+        group = await repo.joinByInviteCode(_codeController.text.trim());
+      },
+    );
+    if (ok && mounted) setState(() => _created = group);
   }
 
   @override

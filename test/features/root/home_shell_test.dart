@@ -42,6 +42,7 @@ void main() {
     when(() => petRepo.getOrCreatePet()).thenAnswer(
       (_) async => Pet(
         userId: 'test-user-id',
+        name: 'Whiskers',
         coins: 0,
         moodScore: 50,
         lastCareAt: DateTime.parse('2026-07-27T00:00:00Z'),

@@ -1,6 +1,7 @@
 // lib/features/activity/activity_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meowes_app/core/async_action.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
@@ -105,7 +106,7 @@ class ActivityScreen extends ConsumerWidget {
                             if (pendingRequesterIds.isNotEmpty) ...[
                               const _SectionLabel(title: 'Friend requests'),
                               const SizedBox(height: 12),
-                              _PendingRequestsCard(friendRepo: friendRepo, requesterIds: pendingRequesterIds),
+                              _PendingRequestsCard(friendRepo: friendRepo, requesterIds: pendingRequesterIds, ref: ref),
                               const SizedBox(height: 24),
                             ],
                             if (settlements.isNotEmpty) ...[
@@ -241,7 +242,12 @@ class _DailyCheckInCard extends StatelessWidget {
 class _PendingRequestsCard extends StatelessWidget {
   final FriendRepository friendRepo;
   final List<String> requesterIds;
-  const _PendingRequestsCard({required this.friendRepo, required this.requesterIds});
+  final WidgetRef ref;
+  const _PendingRequestsCard({
+    required this.friendRepo,
+    required this.requesterIds,
+    required this.ref,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -259,6 +265,7 @@ class _PendingRequestsCard extends StatelessWidget {
                   requesterId: requesterIds[i],
                   name: names[requesterIds[i]] ?? '...',
                   friendRepo: friendRepo,
+                  ref: ref,
                 ),
               ],
             ],
@@ -273,7 +280,13 @@ class _PendingRequestRow extends StatelessWidget {
   final String requesterId;
   final String name;
   final FriendRepository friendRepo;
-  const _PendingRequestRow({required this.requesterId, required this.name, required this.friendRepo});
+  final WidgetRef ref;
+  const _PendingRequestRow({
+    required this.requesterId,
+    required this.name,
+    required this.friendRepo,
+    required this.ref,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -290,15 +303,26 @@ class _PendingRequestRow extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: t.textPrimary),
             ),
           ),
-          IconButton(
+          AsyncIconButton(
             tooltip: 'Decline',
-            icon: Icon(Icons.close, color: t.negative),
-            onPressed: () => friendRepo.declineFriendRequest(requesterId),
+            icon: Icons.close,
+            color: t.negative,
+            onPressed: () => runAction(
+              context,
+              ref,
+              action: () => friendRepo.declineFriendRequest(requesterId),
+            ),
           ),
-          IconButton(
+          AsyncIconButton(
             tooltip: 'Accept',
-            icon: Icon(Icons.check_circle, color: t.positive),
-            onPressed: () => friendRepo.acceptFriendRequest(requesterId),
+            icon: Icons.check_circle,
+            color: t.positive,
+            onPressed: () => runAction(
+              context,
+              ref,
+              action: () => friendRepo.acceptFriendRequest(requesterId),
+              successMessage: "You're now friends with $name",
+            ),
           ),
         ],
       ),
@@ -378,13 +402,16 @@ class _PendingSettlementRow extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w700, color: t.positive),
           ),
           const SizedBox(width: 4),
-          IconButton(
+          AsyncIconButton(
             tooltip: 'Confirm',
-            icon: Icon(Icons.check_circle, color: t.positive),
-            onPressed: () async {
-              await settlementRepo.confirmSettlement(settlement.id);
-              notifyDataChanged(ref);
-            },
+            icon: Icons.check_circle,
+            color: t.positive,
+            onPressed: () => runAction(
+              context,
+              ref,
+              action: () => settlementRepo.confirmSettlement(settlement.id),
+              successMessage: 'Payment from $name confirmed',
+            ),
           ),
         ],
       ),
