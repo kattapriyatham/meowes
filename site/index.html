@@ -3,668 +3,164 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Meowes - Split expenses with friends, care for a virtual cat, and earn coins together.">
-  <title>Meowes — Split Expenses, Care for Your Cat</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #F1F1EF;
-      --bg-alt: #E7E6E3;
-      --surface: #FFFFFF;
-      --graphite: #17171A;
-      --text: #17171A;
-      --text-muted: #6B6B6E;
-      --accent: #FF6A1A;
-      --accent-hover: #E85A0E;
-      --accent-text: #D14E0A;
-      --accent-soft: #FFE4D2;
-      --border: #E1E0DC;
-      --border-strong: #CFCECA;
-      --shadow-sm: 0 1px 2px rgba(23,23,26,0.05);
-      --shadow-md: 0 10px 28px rgba(23,23,26,0.09);
-      --shadow-lg: 0 26px 60px rgba(23,23,26,0.16);
-      --radius-tile: 22px;
-      --radius-input: 14px;
-      --radius-full: 9999px;
-      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
-      --max-width: 1240px;
-      --nav-height: 76px;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: var(--font-sans);
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    .container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
-    img { max-width: 100%; height: auto; display: block; }
-    section { padding: 88px 0; }
-
-    /* Nav */
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: var(--nav-height); background: rgba(241,241,239,0.92); border-bottom: 1px solid var(--border); }
-    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 100%; }
-    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 800; font-size: 1.125rem; letter-spacing: -0.01em; }
-    .logo-mark { width: 36px; height: 36px; border-radius: 11px; background: var(--graphite); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .nav-pill { display: flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); padding: 6px; box-shadow: var(--shadow-sm); }
-    .nav-pill a { padding: 9px 18px; border-radius: var(--radius-full); color: var(--text-muted); text-decoration: none; font-size: 0.8125rem; font-weight: 600; transition: all 0.15s ease; }
-    .nav-pill a:hover { color: var(--text); }
-    .nav-pill a.active { background: var(--accent); color: white; }
-    .nav-cta { padding: 11px 22px; background: var(--graphite); color: white; border-radius: var(--radius-full); font-weight: 650; font-size: 0.875rem; text-decoration: none; transition: background 0.15s ease, transform 0.1s ease; }
-    .nav-cta:hover { background: #000; }
-    .nav-cta:active { transform: scale(0.97); }
-
-    /* Hero */
-    header { position: relative; padding-top: calc(var(--nav-height) + 44px); padding-bottom: 64px; overflow: hidden; }
-    .hero-grid { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); font-size: 0.8125rem; font-weight: 600; margin-bottom: 24px; box-shadow: var(--shadow-sm); }
-    h1 { font-size: clamp(2.25rem, 4.2vw, 3.375rem); font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; text-transform: uppercase; margin-bottom: 20px; }
-    h1 .accent-line { color: var(--accent-text); display: block; }
-    .hero-subtext { font-size: 1.0625rem; color: var(--text-muted); max-width: 42ch; margin-bottom: 28px; line-height: 1.6; }
-    .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-    .store-badge { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 14px; text-decoration: none; transition: transform 0.15s ease, opacity 0.15s ease; }
-    .store-badge:hover { opacity: 0.9; }
-    .store-badge:active { transform: scale(0.98); }
-    .store-badge.apple { background: var(--graphite); color: white; }
-    .store-badge.google { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
-    .store-badge-text { display: flex; flex-direction: column; line-height: 1.15; }
-    .store-badge-text .small { font-size: 0.625rem; opacity: 0.85; font-weight: 500; }
-    .store-badge-text .big { font-size: 0.9375rem; font-weight: 700; }
-    .hero-trust { display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; color: var(--text-muted); font-weight: 500; }
-    .hero-trust svg { color: var(--accent); flex-shrink: 0; }
-
-    /* Hero visual */
-    .hero-visual { position: relative; height: 620px; }
-    .hero-glow { position: absolute; top: 8%; left: 8%; width: 84%; height: 84%; background: radial-gradient(circle, var(--accent-soft) 0%, rgba(255,228,210,0) 68%); opacity: 0.8; z-index: 0; }
-    .hero-phones { position: absolute; inset: 0; z-index: 1; }
-    .hphone { position: absolute; border-radius: 34px; background: var(--graphite); padding: 8px; box-shadow: var(--shadow-lg); }
-    .hphone-notch { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 84px; height: 22px; background: var(--graphite); border-radius: 0 0 14px 14px; z-index: 2; }
-    .hphone-screen { position: relative; background: var(--surface); border-radius: 27px; overflow: hidden; aspect-ratio: 375/812; }
-    .hphone-shot { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-    .hphone.back { width: 196px; top: 0; right: 8%; transform: rotate(8deg); z-index: 1; filter: brightness(0.97); }
-    .hphone.front { width: 262px; left: 2%; bottom: 0; transform: rotate(-4deg); z-index: 3; }
-
-    .chip { position: absolute; display: flex; align-items: center; justify-content: center; border-radius: 16px; box-shadow: var(--shadow-md); z-index: 4; }
-    .chip svg { display: block; }
-    .chip-heart { top: 2%; left: 0; width: 48px; height: 48px; background: linear-gradient(160deg, #FF8A4C, #E8480F); color: white; transform: rotate(-10deg); }
-    .chip-trend { bottom: 10%; right: 2%; width: 52px; height: 52px; background: var(--surface); border: 1px solid var(--border); color: var(--accent-text); transform: rotate(6deg); }
-
-    /* Pet feature showcase */
-    .showcase-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
-    .showcase-item { text-align: center; }
-    .showcase-phone { position: relative; width: 100%; max-width: 220px; margin: 0 auto 22px; border-radius: 30px; background: var(--graphite); padding: 7px; box-shadow: var(--shadow-lg); }
-    .showcase-phone .hphone-notch { width: 74px; height: 18px; }
-    .showcase-phone .hphone-shot { border-radius: 24px; aspect-ratio: 375/812; }
-    .showcase-item h3 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
-    .showcase-item p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; max-width: 26ch; margin: 0 auto; }
-    .pet-showcase + .pet-showcase { margin-top: 88px; }
-
-    /* Money timeline card (icon + copy + illustrative chip, dashed connector) */
-    .timeline-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-tile); padding: 8px 44px; box-shadow: var(--shadow-sm); max-width: 900px; margin: 0 auto; }
-    .timeline-card::before { content: ''; position: absolute; top: 68px; bottom: 68px; left: 71px; width: 2px; background-image: linear-gradient(var(--border-strong) 55%, rgba(255,255,255,0) 0%); background-size: 2px 12px; background-repeat: repeat-y; }
-    .timeline-row { position: relative; z-index: 1; display: grid; grid-template-columns: 56px 1fr auto; gap: 28px; align-items: center; padding: 32px 0; }
-    .timeline-row + .timeline-row::before { content: ''; position: absolute; top: 0; left: 84px; right: 0; height: 1px; background: var(--border); }
-    .timeline-icon { position: relative; z-index: 2; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .timeline-icon.green { background: #DEF0DE; color: #2F8F4E; }
-    .timeline-icon.amber { background: #FBEACB; color: #C8871B; }
-    .timeline-icon.purple { background: #E8E1FB; color: #7C5CFA; }
-    .timeline-text h3 { font-size: 1.0625rem; font-weight: 700; margin-bottom: 6px; }
-    .timeline-text p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; max-width: 40ch; }
-    .tl-visual { width: 168px; flex-shrink: 0; border-radius: 16px; padding: 14px 16px; }
-    .tl-visual.green-bg { background: #DEF0DE; }
-    .tl-visual.amber-bg { background: #FBEACB; }
-    .tl-visual.purple-bg { background: #E8E1FB; }
-    .tl-line { display: block; height: 8px; border-radius: 4px; background: rgba(23,23,26,0.14); margin-bottom: 8px; }
-    .tl-line.short { width: 60%; }
-    .tl-amount { display: block; margin-top: 10px; font-family: var(--font-mono); font-weight: 700; font-size: 1.0625rem; color: var(--text); background: rgba(255,255,255,0.7); border-radius: 8px; padding: 6px 10px; text-align: center; }
-    .tl-mini-avatars { display: flex; justify-content: center; margin-top: 12px; }
-    .tl-mini-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.5625rem; border: 2px solid var(--surface); margin-left: -8px; }
-    .tl-mini-avatar:first-child { margin-left: 0; }
-    .tl-visual.avatars { display: flex; align-items: center; justify-content: center; padding: 22px 16px; }
-    .tl-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8125rem; border: 2px solid var(--surface); margin-left: -12px; }
-    .tl-avatar:first-child { margin-left: 0; }
-    .tl-bal-row { display: flex; align-items: center; gap: 8px; }
-    .tl-bal-row + .tl-bal-row { margin-top: 10px; }
-    .tl-avatar.small { width: 26px; height: 26px; font-size: 0.625rem; margin-left: 0; border: none; flex-shrink: 0; }
-    .tl-bal-bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(23,23,26,0.1); }
-    .tl-amt { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
-    .tl-amt.pos { color: #1A8A4C; }
-    .tl-amt.neg { color: #D64545; }
-
-    /* Who it's for */
-    .usecase-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-    .usecase-card { padding: 32px 28px; border-radius: var(--radius-tile); }
-    .usecase-card.trip { background: var(--accent-soft); }
-    .usecase-card.roommates { background: #E3ECDD; }
-    .usecase-card.couples { background: #FBE5EA; }
-    .usecase-icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.65); color: var(--graphite); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
-    .usecase-card h3 { font-size: 1.0625rem; font-weight: 700; margin-bottom: 8px; }
-    .usecase-card p { font-size: 0.875rem; color: var(--text); opacity: 0.72; line-height: 1.55; }
-
-    /* Founder note */
-    .founder-note { max-width: 620px; margin: 0 auto; text-align: center; }
-    .founder-note p { font-size: 1.125rem; line-height: 1.7; color: var(--text); margin-bottom: 16px; }
-    .founder-note .signoff { font-size: 0.875rem; font-weight: 650; color: var(--text-muted); }
-
-    /* FAQ */
-    .faq-list { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-    .faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-input); padding: 0 22px; }
-    .faq-item summary { list-style: none; cursor: pointer; padding: 18px 0; font-weight: 700; font-size: 0.9375rem; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .faq-item summary::-webkit-details-marker { display: none; }
-    .faq-icon { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease; }
-    .faq-item[open] .faq-icon { transform: rotate(45deg); background: var(--accent); color: white; }
-    .faq-item p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; padding-bottom: 18px; max-width: 62ch; }
-
-    /* Section headers */
-    .section-header { text-align: center; margin-bottom: 56px; }
-    .section-header h2 { font-size: clamp(1.5rem, 2.6vw, 1.875rem); font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 10px; }
-    .section-header h2 .paw { font-size: 1.125rem; }
-
-    /* How it works */
-    .how-grid { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: start; }
-    .how-step { text-align: center; }
-    .how-icon { width: 116px; height: 116px; margin: 0 auto 22px; display: flex; align-items: center; justify-content: center; position: relative; }
-    .how-number { font-family: var(--font-mono); font-size: 2.5rem; font-weight: 700; color: var(--border-strong); margin-bottom: 8px; }
-    .how-step h3 { font-size: 1.0625rem; font-weight: 700; margin-bottom: 6px; }
-    .how-step p { font-size: 0.875rem; color: var(--text-muted); max-width: 22ch; margin: 0 auto; line-height: 1.55; }
-    .how-arrow { align-self: center; margin-top: 100px; color: var(--accent); opacity: 0.7; }
-    .how-arrow svg { display: block; }
-
-    /* CTA band */
-    .cta-band { background: linear-gradient(135deg, #FF8A3D 0%, var(--accent) 55%, #E8480F 100%); border-radius: var(--radius-tile); padding: 56px 48px; position: relative; overflow: hidden; display: grid; grid-template-columns: auto 1fr; gap: 40px; align-items: center; }
-    .cta-band-visual { width: 150px; height: 150px; flex-shrink: 0; }
-    .cta-band h2 { color: white; font-size: clamp(1.375rem, 2.4vw, 1.75rem); font-weight: 800; text-transform: uppercase; line-height: 1.2; margin-bottom: 10px; max-width: 26ch; }
-    .cta-band-row { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 18px; }
-    .cta-band p.sub { color: rgba(255,255,255,0.85); font-size: 0.9375rem; max-width: 32ch; }
-    .cta-band .store-badge.apple { background: var(--graphite); }
-    .cta-band .store-badge.google { background: white; border: none; }
-    .cta-heart { position: absolute; bottom: 20px; right: 28px; width: 34px; height: 34px; opacity: 0.5; }
-
-    /* Footer */
-    footer { padding: 56px 0 32px; border-top: 1px solid var(--border); }
-    .footer-grid { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 44px; margin-bottom: 44px; }
-    .footer-brand p { color: var(--text-muted); font-size: 0.9375rem; line-height: 1.65; margin-top: 16px; max-width: 260px; }
-    .footer-col h4 { font-size: 0.75rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 16px; }
-    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-    .footer-col a { color: var(--text); text-decoration: none; font-size: 0.9375rem; transition: color 0.15s ease; }
-    .footer-col a:hover { color: var(--accent-text); }
-    .footer-bottom { display: flex; align-items: center; justify-content: space-between; padding-top: 28px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 16px; }
-    .footer-bottom p { font-size: 0.875rem; color: var(--text-muted); }
-    .footer-social { display: flex; gap: 14px; }
-    .footer-social a { width: 38px; height: 38px; border-radius: var(--radius-full); background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.15s ease; text-decoration: none; }
-    .footer-social a:hover { background: var(--accent); border-color: var(--accent); color: white; }
-
-    /* Mobile */
-    @media (max-width: 1024px) {
-      .hero-grid { grid-template-columns: 1fr; gap: 48px; }
-      .hero-visual { order: -1; height: 480px; }
-      .hphone.front { width: 220px; }
-      .hphone.back { width: 168px; }
-      .showcase-grid { grid-template-columns: 1fr; gap: 40px; }
-      .usecase-grid { grid-template-columns: 1fr; gap: 20px; }
-      .pet-showcase + .pet-showcase { margin-top: 56px; }
-      .timeline-card { padding: 8px 22px; }
-      .timeline-card::before { display: none; }
-      .timeline-row { grid-template-columns: 1fr; text-align: center; gap: 14px; padding: 28px 0; }
-      .timeline-icon { margin: 0 auto; }
-      .timeline-text p { max-width: 34ch; margin: 0 auto; }
-      .tl-visual { width: 100%; max-width: 260px; margin: 0 auto; }
-      .how-grid { grid-template-columns: 1fr; gap: 40px; }
-      .how-arrow { display: none; }
-      .cta-band { grid-template-columns: 1fr; text-align: center; }
-      .cta-band-visual { margin: 0 auto; }
-      .cta-band-row { justify-content: center; }
-      .footer-grid { grid-template-columns: 1fr 1fr; }
-    }
-    @media (max-width: 640px) {
-      .nav-pill { display: none; }
-      .footer-grid { grid-template-columns: 1fr; }
-      .hero-ctas { flex-direction: column; align-items: stretch; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
-    }
-  </style>
+  <meta name="theme-color" content="#f5efe3">
+  <meta name="description" content="Shared expenses, clear balances, and a little cat to care for. Meowes makes splitting bills with friends feel lighter.">
+  <title>Meowes | Split the bill. Keep the friendship.</title>
+  <link rel="preload" href="landing_assets/fonts/dm-serif-display-400.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="landing_assets/fonts/geist-400.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="landing_assets/hero-cat-poster.jpg" as="image" fetchpriority="high">
+  <link rel="stylesheet" href="landing.css">
+  <script src="landing.js" defer></script>
 </head>
 <body>
-  <nav>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <nav class="site-nav" aria-label="Main navigation">
     <div class="container nav-inner">
-      <a href="#" class="logo">
-        <span class="logo-mark">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M6 10c0-1.5.5-3 2-4.5M18 10c0-1.5-.5-3-2-4.5" stroke="#FF6A1A" stroke-width="2" stroke-linecap="round"/>
-            <rect x="4" y="9" width="16" height="12" rx="6" fill="#FF6A1A"/>
-            <circle cx="9.5" cy="15" r="1.2" fill="#17171A"/>
-            <circle cx="14.5" cy="15" r="1.2" fill="#17171A"/>
-          </svg>
-        </span>
-        <span>Meowes</span>
+      <a class="brand" href="#hero" aria-label="Meowes home">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 10c0-1.5.5-3 2-4.5M18 10c0-1.5-.5-3-2-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="4" y="9" width="16" height="12" rx="6" fill="currentColor"/><circle cx="9.5" cy="15" r="1.2" fill="#f5efe3"/><circle cx="14.5" cy="15" r="1.2" fill="#f5efe3"/></svg></span>
+        Meowes
       </a>
-      <div class="nav-pill">
-        <a href="#" class="active">Home</a>
-        <a href="#features">Features</a>
+      <div class="nav-links" id="main-navigation">
+        <a href="#features">The essentials</a>
+        <a href="#cat">Meet your cat</a>
         <a href="#how">How it works</a>
         <a href="#faq">FAQ</a>
       </div>
-      <a href="#download" class="nav-cta">Get the App</a>
+      <a class="button nav-cta" href="#download">Get Meowes <span aria-hidden="true">↗</span></a>
+      <button class="menu-toggle" type="button" aria-controls="main-navigation" aria-expanded="false">Menu</button>
     </div>
   </nav>
 
-  <header>
-    <div class="container">
-      <div class="hero-grid">
-        <div>
-          <span class="hero-badge">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--accent-text)"><ellipse cx="12" cy="16.5" rx="6" ry="5"/><circle cx="5.5" cy="9" r="2.4"/><circle cx="10.5" cy="5.5" r="2.4"/><circle cx="15.5" cy="5.5" r="2.4"/><circle cx="18.5" cy="9" r="2.4"/></svg>
-            Split expenses. Stronger friendships.
-          </span>
-          <h1>Expenses made simple.<span class="accent-line">Friendships made stronger.</span></h1>
-          <p class="hero-subtext">Add bills, split fairly, care for your cat, and earn coins together!</p>
-          <div class="hero-ctas" id="download">
-            <a href="#" class="store-badge apple">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16.365 1.43c0 1.14-.475 2.163-1.244 2.955-.845.868-2.234 1.53-3.36 1.44-.147-1.09.404-2.24 1.19-3.02.83-.83 2.29-1.46 3.414-1.375zm4.14 15.62c-.45 1.02-.664 1.47-1.24 2.37-.803 1.25-1.936 2.81-3.34 2.82-1.25.02-1.57-.82-3.27-.81-1.7.01-2.06.83-3.31.81-1.4-.02-2.47-1.42-3.28-2.67-2.25-3.47-2.49-7.55-1.1-9.72.99-1.55 2.55-2.46 4.02-2.46 1.5 0 2.44.83 3.68.83 1.2 0 1.94-.83 3.68-.83 1.31 0 2.7.71 3.69 1.94-3.25 1.78-2.72 6.42.46 7.71z"/></svg>
-              <span class="store-badge-text"><span class="small">Download on the</span><span class="big">App Store</span></span>
-            </a>
-            <a href="#" class="store-badge google">
-              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#00D9FF" d="M3.6 2.6c-.4.3-.6.8-.6 1.4v16c0 .6.2 1.1.6 1.4L13 12 3.6 2.6z"/><path fill="#00F076" d="M16.8 8.8 13 12l3.8 3.2 4.4-2.5c.7-.4.7-1.5 0-1.9l-4.4-2z"/><path fill="#FF3A44" d="M3.6 2.6 13 12l3.8-3.2-11.7-6.6c-.5-.3-1.1-.2-1.5.4z"/><path fill="#FFCF00" d="M3.6 21.4c.4.3 1 .3 1.5 0l11.7-6.6L13 12 3.6 21.4z"/></svg>
-              <span class="store-badge-text"><span class="small">GET IT ON</span><span class="big">Google Play</span></span>
-            </a>
+  <main id="main">
+    <header class="hero" id="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">Shared expenses. A little more joy.</span>
+          <h1>Split the bill.<em>Keep the friendship.</em></h1>
+          <p class="hero-subtext">Less keeping tabs. More good times. Split expenses with your people, keep balances clear, and care for a little cat along the way.</p>
+          <div class="hero-actions">
+            <a class="button" href="#download">Meet Meowes <span aria-hidden="true">↗</span></a>
+            <a class="text-link" href="#how">See how it works <span aria-hidden="true">↓</span></a>
           </div>
+          <p class="hero-note">Free to use. Android coming first. iOS to follow.</p>
         </div>
-
-        <div class="hero-visual">
-          <div class="hero-glow" aria-hidden="true"></div>
-          <div class="hero-phones">
-            <div class="hphone back">
-              <div class="hphone-notch"></div>
-              <div class="hphone-screen">
-                <img class="hphone-shot" src="landing_assets/screenshots/hero-petting.jpg" alt="Petting your cat in the Meowes app">
-              </div>
-            </div>
-            <div class="hphone front">
-              <div class="hphone-notch"></div>
-              <div class="hphone-screen">
-                <img class="hphone-shot" src="landing_assets/screenshots/hero-home.jpg" alt="Meowes home screen showing balances and your cat">
-              </div>
-            </div>
-          </div>
-
-          <div class="chip chip-heart" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-10-9.3C.5 8 2.3 4.5 6 4c2-.3 3.7.7 6 3 2.3-2.3 4-3.3 6-3 3.7.5 5.5 4 4 7.7-2.5 4.7-10 9.3-10 9.3z"/></svg>
-          </div>
-          <div class="chip chip-trend" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
-          </div>
+        <div class="hero-art">
+          <video class="hero-cat-video" src="landing_assets/cat-right-left-video.mp4" poster="landing_assets/hero-cat-poster.jpg" muted playsinline preload="auto" aria-label="Your Meowes cat, looking around as you move your mouse"></video>
+          <p class="cat-caption"><span>A little company. A lot less math.</span>Your new favourite part of splitting bills.</p>
         </div>
+      </div>
+    </header>
+
+    <div class="intro">
+      <div class="container intro-inner">
+        <p>A little less admin.<br>A little more living.</p>
+        <ul aria-label="Meowes benefits">
+          <li><span class="check" aria-hidden="true">✓</span> Simple expense splits</li>
+          <li><span class="check" aria-hidden="true">✓</span> Clear shared balances</li>
+          <li><span class="check" aria-hidden="true">✓</span> Your own cat companion</li>
+        </ul>
       </div>
     </div>
-  </header>
 
-  <section id="who">
-    <div class="container">
-      <div class="section-header">
-        <h2>Made For However You Split <span class="paw"><svg width="18" height="18" viewBox="0 0 24 24" fill="var(--accent-text)"><ellipse cx="12" cy="16.5" rx="6" ry="5"/><circle cx="5.5" cy="9" r="2.4"/><circle cx="10.5" cy="5.5" r="2.4"/><circle cx="15.5" cy="5.5" r="2.4"/><circle cx="18.5" cy="9" r="2.4"/></svg></span></h2>
+    <section class="feature-section" id="features" aria-labelledby="features-heading">
+      <div class="container">
+        <div class="section-heading">
+          <span class="eyebrow">The everyday essentials</span>
+          <h2 id="features-heading">Good times together.<br>Money matters, handled.</h2>
+          <p>From the first coffee to the last cab home, give every shared expense a place to land.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-panel">
+            <div class="feature-panel-copy">
+              <h3>One bill. Everyone’s share.</h3>
+              <p>Add the amount, choose who paid, and split it with your friends. The little details stay together.</p>
+            </div>
+            <div class="phone expense-phone"><img src="landing_assets/screenshots/feature-addexpense.jpg" alt="Meowes expense form with amount, payer, and split options" width="750" height="1624" loading="lazy"></div>
+          </article>
+          <article class="feature-panel secondary">
+            <div class="feature-panel-copy">
+              <h3>Know exactly where you stand.</h3>
+              <p>See what you owe and what’s coming back, with your balances in one easy view.</p>
+            </div>
+            <div class="phone balance-phone"><img src="landing_assets/screenshots/hero-home.jpg" alt="Meowes home screen showing balances with friends" width="750" height="1624" loading="lazy"></div>
+          </article>
+        </div>
+        <div class="feature-footnote"><span>Made for the moments you share, big and small.</span><span>Actual app screens shown with example expenses.</span></div>
       </div>
-      <div class="usecase-grid">
-        <div class="usecase-card trip">
-          <div class="usecase-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></svg>
-          </div>
-          <h3>Trip groups</h3>
-          <p>Add everyone once, log every meal and cab on the go, split it all when you're home.</p>
+    </section>
+
+    <section class="cat-section" id="cat" aria-labelledby="cat-heading">
+      <div class="container cat-grid">
+        <div class="cat-scene">
+          <div class="phone"><img src="landing_assets/screenshots/feature-pet.jpg" alt="Whiskers in the Meowes app, with pet, feed, and activity options" width="750" height="1624" loading="lazy"></div>
         </div>
-        <div class="usecase-card roommates">
-          <div class="usecase-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+        <div class="cat-copy">
+          <span class="eyebrow">A companion, not a calculator</span>
+          <h2 id="cat-heading">A softer side<br>to settling up.</h2>
+          <p class="body-copy">There’s more to Meowes than who owes what. Your little companion is always happy to see you, paid up or not.</p>
+          <div class="cat-perks">
+            <div class="cat-perk"><span class="perk-mark" aria-hidden="true">♡</span><div><h3>A moment of calm</h3><p>Stop by, give them a little affection, and brighten their day.</p></div></div>
+            <div class="cat-perk"><span class="perk-mark" aria-hidden="true">✧</span><div><h3>Small wins, happy whiskers</h3><p>Use the coins you earn to treat your cat to food and activities.</p></div></div>
           </div>
-          <h3>Roommates</h3>
-          <p>Rent, groceries, WiFi. Recurring costs sorted without the group chat math.</p>
-        </div>
-        <div class="usecase-card couples">
-          <div class="usecase-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-10-9.3C.5 8 2.3 4.5 6 4c2-.3 3.7.7 6 3 2.3-2.3 4-3.3 6-3 3.7.5 5.5 4 4 7.7-2.5 4.7-10 9.3-10 9.3z"/></svg>
-          </div>
-          <h3>Couples</h3>
-          <p>Split the bills and raise a cat together. Whiskers doesn't care who paid last.</p>
+          <a class="text-link" href="#download">Find your little companion <span aria-hidden="true">↗</span></a>
         </div>
       </div>
+    </section>
+
+    <section class="how-section" id="how" aria-labelledby="how-heading">
+      <div class="container">
+        <div class="how-heading"><span class="eyebrow">Less effort, from the start</span><h2 id="how-heading">From “I’ll get this”<br>to all settled.</h2></div>
+        <ol class="how-steps">
+          <li><h3>Bring your people.</h3><p>Add your friends or make a group for your home, your trip, or whatever’s next.</p></li>
+          <li><h3>Add what you shared.</h3><p>Log the expense, choose who paid, and decide how to split it. We’ll keep track.</p></li>
+          <li><h3>Settle up. Carry on.</h3><p>Check your balances, record your settlement, and get back to making plans together.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="together-section" id="who" aria-labelledby="together-heading">
+      <div class="container">
+        <div class="section-heading"><span class="eyebrow">For your kind of together</span><h2 id="together-heading">Life isn’t one-size-fits-all.<br>Neither is sharing it.</h2></div>
+        <div class="occasion-grid">
+          <article class="occasion"><div class="occasion-art"><img src="landing_assets/usecase-trip-art.webp" alt="A suitcase with a receipt and travel expenses" width="1536" height="1024" loading="lazy"></div><h3>The weekend away.</h3><p>Meals, stays, and one more round. Keep the memories without keeping every receipt in your head.</p></article>
+          <article class="occasion"><div class="occasion-art"><img src="landing_assets/usecase-roommates-art.webp" alt="A shared home with household bills" width="1536" height="1024" loading="lazy"></div><h3>The place you call home.</h3><p>Groceries, rent, and the WiFi bill. Give shared living a little less group chat math.</p></article>
+          <article class="occasion"><div class="occasion-art"><img src="landing_assets/usecase-couples-art.webp" alt="Two mugs and a little cat, for life shared together" width="1536" height="1024" loading="lazy"></div><h3>The everyday, together.</h3><p>For date nights, daily coffees, and everything you’re building. Keep the money part simple.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="story" aria-label="Why we built Meowes">
+      <div class="container story-inner"><span class="eyebrow">Why we made Meowes</span><blockquote>“Sharing a life should feel better than balancing a spreadsheet. We thought splitting bills could use a little warmth.”<cite>The Meowes team</cite></blockquote></div>
+    </section>
+
+    <section class="faq-section" id="faq" aria-labelledby="faq-heading">
+      <div class="container faq-grid">
+        <div class="faq-heading"><span class="eyebrow">A few things to know</span><h2 id="faq-heading">Glad you asked.</h2><p>Have something else on your mind?</p><a class="text-link" href="/legal/support.html">Talk to us <span aria-hidden="true">↗</span></a></div>
+        <div class="faq-list">
+          <details class="faq-item" open><summary>What is Meowes?</summary><p>Meowes helps you split expenses with friends, keep track of shared balances, and record settlements. You also get a virtual cat to care for along the way.</p></details>
+          <details class="faq-item"><summary>Is Meowes free to use?</summary><p>Yes. Adding friends, splitting expenses, and caring for your cat are all free.</p></details>
+          <details class="faq-item"><summary>When can I get the app?</summary><p>We’re finishing testing. Android is coming first, with iOS planned for a later release. If you’d like to know more, get in touch with our team.</p></details>
+          <details class="faq-item"><summary>Who can see my shared expenses?</summary><p>Your shared balances and expenses are visible to the friends and groups involved. Read our <a class="text-link" href="/legal/privacy.html">privacy policy</a> for more about how we handle your information.</p></details>
+          <details class="faq-item"><summary>What does the cat do?</summary><p>Your cat gives you a little reason to check in beyond the bills. Pet them, feed them, and spend earned coins on treats and activities.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="download-section" id="download" aria-labelledby="download-heading">
+      <div class="container"><div class="download-panel">
+        <div><span class="eyebrow">A little less owing. A little more living.</span><h2 id="download-heading">Your people.<br>Your plans.<br>All squared away.</h2></div>
+        <div class="download-copy"><p>Clear balances for the group.<br>A little companion for you.<br>Meowes is on its way.</p><a class="button" href="mailto:meowesapp@gmail.com?subject=Meowes%20launch%20enquiry">Ask us about the launch <span aria-hidden="true">↗</span></a><small>Android coming soon. iOS to follow.</small></div>
+      </div></div>
+    </section>
+  </main>
+
+  <footer class="footer"><div class="container">
+    <div class="footer-main">
+      <div class="footer-brand"><a class="brand" href="#hero" aria-label="Meowes home"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 10c0-1.5.5-3 2-4.5M18 10c0-1.5-.5-3-2-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="4" y="9" width="16" height="12" rx="6" fill="currentColor"/><circle cx="9.5" cy="15" r="1.2" fill="#f5efe3"/><circle cx="14.5" cy="15" r="1.2" fill="#f5efe3"/></svg></span>Meowes</a><p>For everything you share.<br>And the people you share it with.</p></div>
+      <div><span class="footer-title">Explore</span><div class="footer-links"><a href="#features">The essentials</a><a href="#cat">Meet your cat</a><a href="#how">How it works</a><a href="/legal/support.html">Contact &amp; support</a></div></div>
+      <div><span class="footer-title">The details</span><div class="footer-links"><a href="/legal/privacy.html">Privacy policy</a><a href="/legal/terms.html">Terms of service</a><a href="/legal/delete-account.html">Delete your account</a></div></div>
     </div>
-  </section>
-
-  <section id="features">
-    <div class="container">
-      <div class="pet-showcase">
-        <div class="section-header">
-          <h2>Split It, Settle It <span class="paw"><svg width="18" height="18" viewBox="0 0 24 24" fill="var(--accent-text)"><ellipse cx="12" cy="16.5" rx="6" ry="5"/><circle cx="5.5" cy="9" r="2.4"/><circle cx="10.5" cy="5.5" r="2.4"/><circle cx="15.5" cy="5.5" r="2.4"/><circle cx="18.5" cy="9" r="2.4"/></svg></h2>
-        </div>
-        <div class="timeline-card">
-          <div class="timeline-row">
-            <div class="timeline-icon green">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h8l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M15 3v4h4"/><path d="M9 12h6M9 16h6M9 20h3"/></svg>
-            </div>
-            <div class="timeline-text">
-              <h3>Add in seconds</h3>
-              <p>Type the amount, pick who's in, and split it equally or exactly.</p>
-            </div>
-            <div class="tl-visual green-bg" aria-hidden="true">
-              <span class="tl-line"></span>
-              <span class="tl-line short"></span>
-              <span class="tl-amount">&#8377;1,200</span>
-              <div class="tl-mini-avatars">
-                <span class="tl-mini-avatar" style="background:#E4DFFB; color:#7C5CFA;"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-                <span class="tl-mini-avatar" style="background:#DCEAFB; color:#2F80ED;"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-                <span class="tl-mini-avatar" style="background:#FCEFD1; color:#B4790E;"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-                <span class="tl-mini-avatar" style="background:#FBE1E9; color:#D6336C;">+2</span>
-              </div>
-            </div>
-          </div>
-          <div class="timeline-row">
-            <div class="timeline-icon amber">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9.5" r="2.4"/><path d="M3 20c0-4 2.7-6.5 6-6.5s6 2.5 6 6.5"/><path d="M15 14c2.6.4 4.5 2.4 4.5 6"/></svg>
-            </div>
-            <div class="timeline-text">
-              <h3>Group the chaos</h3>
-              <p>Trip, flat, family. Every group keeps its own running tab.</p>
-            </div>
-            <div class="tl-visual avatars amber-bg" aria-hidden="true">
-              <span class="tl-avatar" style="background:#E4DFFB; color:#7C5CFA;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-              <span class="tl-avatar" style="background:#DCEAFB; color:#2F80ED;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-              <span class="tl-avatar" style="background:#FBE1E9; color:#D6336C;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-            </div>
-          </div>
-          <div class="timeline-row">
-            <div class="timeline-icon purple">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-            </div>
-            <div class="timeline-text">
-              <h3>See who owes what</h3>
-              <p>One glance tells you exactly where you stand with each friend.</p>
-            </div>
-            <div class="tl-visual balances purple-bg" aria-hidden="true">
-              <div class="tl-bal-row">
-                <span class="tl-avatar small" style="background:#E4DFFB; color:#7C5CFA;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-                <span class="tl-bal-bar"></span>
-                <span class="tl-amt pos">+&#8377;400</span>
-              </div>
-              <div class="tl-bal-row">
-                <span class="tl-avatar small" style="background:#DCEAFB; color:#2F80ED;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-                <span class="tl-bal-bar"></span>
-                <span class="tl-amt neg">&minus;&#8377;250</span>
-              </div>
-              <div class="tl-bal-row">
-                <span class="tl-avatar small" style="background:#FCEFD1; color:#B4790E;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-9 2.5-9 6.5V21h18v-.5c0-4-4-6.5-9-6.5z"/></svg></span>
-                <span class="tl-bal-bar"></span>
-                <span class="tl-amt pos">+&#8377;150</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="pet-showcase">
-        <div class="section-header">
-          <h2>Your Cat, Right There <span class="paw"><svg width="18" height="18" viewBox="0 0 24 24" fill="var(--accent-text)"><ellipse cx="12" cy="16.5" rx="6" ry="5"/><circle cx="5.5" cy="9" r="2.4"/><circle cx="10.5" cy="5.5" r="2.4"/><circle cx="15.5" cy="5.5" r="2.4"/><circle cx="18.5" cy="9" r="2.4"/></svg></h2>
-        </div>
-        <div class="showcase-grid">
-          <div class="showcase-item">
-            <div class="showcase-phone">
-              <div class="hphone-notch"></div>
-              <img class="hphone-shot" src="landing_assets/screenshots/feature-pet.jpg" alt="Meowes pet screen showing mood, coins, and daily activities">
-            </div>
-            <h3>Check in anytime</h3>
-            <p>See their mood and coin balance, then feed or play in a tap.</p>
-          </div>
-          <div class="showcase-item">
-            <div class="showcase-phone">
-              <div class="hphone-notch"></div>
-              <img class="hphone-shot" src="landing_assets/screenshots/hero-petting.jpg" alt="Swiping to pet the cat in the Meowes app">
-            </div>
-            <h3>Stroke &amp; cuddle</h3>
-            <p>Swipe over their head to show love and lift their mood.</p>
-          </div>
-          <div class="showcase-item">
-            <div class="showcase-phone">
-              <div class="hphone-notch"></div>
-              <img class="hphone-shot" src="landing_assets/screenshots/feature-feed.jpg" alt="Feeding the cat fish, treats, or dry food in the Meowes app">
-            </div>
-            <h3>Feed with coins</h3>
-            <p>Spend coins earned from settling up on fish, treats, and more.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="how">
-    <div class="container">
-      <div class="section-header">
-        <h2>How Meowes Works <span class="paw"><svg width="18" height="18" viewBox="0 0 24 24" fill="var(--accent-text)"><ellipse cx="12" cy="16.5" rx="6" ry="5"/><circle cx="5.5" cy="9" r="2.4"/><circle cx="10.5" cy="5.5" r="2.4"/><circle cx="15.5" cy="5.5" r="2.4"/><circle cx="18.5" cy="9" r="2.4"/></svg></span></h2>
-      </div>
-      <div class="how-grid">
-        <div class="how-step">
-          <div class="how-number">01</div>
-          <div class="how-icon">
-            <svg width="110" height="110" viewBox="0 0 120 120" fill="none">
-              <rect x="24" y="18" width="72" height="88" rx="10" fill="#FFFFFF" stroke="#E1E0DC" stroke-width="2" transform="rotate(-4 60 60)"/>
-              <circle cx="42" cy="26" r="3.2" fill="#FF6A1A" transform="rotate(-4 60 60)"/>
-              <circle cx="54" cy="26" r="3.2" fill="#FF6A1A" transform="rotate(-4 60 60)"/>
-              <circle cx="66" cy="26" r="3.2" fill="#FF6A1A" transform="rotate(-4 60 60)"/>
-              <line x1="34" y1="50" x2="82" y2="46" stroke="#E1E0DC" stroke-width="4" stroke-linecap="round" transform="rotate(-4 60 60)"/>
-              <line x1="34" y1="64" x2="82" y2="60" stroke="#E1E0DC" stroke-width="4" stroke-linecap="round" transform="rotate(-4 60 60)"/>
-              <line x1="34" y1="78" x2="66" y2="75" stroke="#E1E0DC" stroke-width="4" stroke-linecap="round" transform="rotate(-4 60 60)"/>
-            </svg>
-          </div>
-          <h3>Add Expenses</h3>
-          <p>Add any bill and invite your friends.</p>
-        </div>
-        <div class="how-arrow"><svg width="60" height="24" viewBox="0 0 60 24" fill="none"><line x1="0" y1="12" x2="48" y2="12" stroke="currentColor" stroke-width="2.5" stroke-dasharray="6 6"/><path d="M42 5l10 7-10 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="how-step">
-          <div class="how-number">02</div>
-          <div class="how-icon">
-            <svg width="110" height="110" viewBox="0 0 120 120" fill="none">
-              <circle cx="60" cy="66" r="40" fill="#FFF" stroke="#E1E0DC" stroke-width="2"/>
-              <path d="M42 40 L34 22 L52 32 Z" fill="#FFF" stroke="#E1E0DC" stroke-width="2"/>
-              <path d="M78 40 L86 22 L68 32 Z" fill="#FFF" stroke="#E1E0DC" stroke-width="2"/>
-              <circle cx="50" cy="64" r="4" fill="#17171A"/>
-              <circle cx="70" cy="64" r="4" fill="#17171A"/>
-              <path d="M53 78c3 3 11 3 14 0" stroke="#17171A" stroke-width="2.5" stroke-linecap="round"/>
-              <path d="M60 10l4 8-8 0z" fill="#FF6A1A"/>
-              <path d="M60 20c-3-4-9-4-9 1 0 4 9 9 9 9s9-5 9-9c0-5-6-5-9-1z" fill="#FF6A1A"/>
-            </svg>
-          </div>
-          <h3>Care &amp; Earn</h3>
-          <p>Take care of your cat and earn coins.</p>
-        </div>
-        <div class="how-arrow"><svg width="60" height="24" viewBox="0 0 60 24" fill="none"><line x1="0" y1="12" x2="48" y2="12" stroke="currentColor" stroke-width="2.5" stroke-dasharray="6 6"/><path d="M42 5l10 7-10 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="how-step">
-          <div class="how-number">03</div>
-          <div class="how-icon">
-            <svg width="110" height="110" viewBox="0 0 120 120" fill="none">
-              <circle cx="60" cy="60" r="42" fill="#FFC157"/>
-              <circle cx="60" cy="60" r="42" fill="url(#coinGrad)"/>
-              <defs>
-                <linearGradient id="coinGrad" x1="20" y1="20" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#FFD873"/>
-                  <stop offset="1" stop-color="#E8890C"/>
-                </linearGradient>
-              </defs>
-              <circle cx="60" cy="60" r="34" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-dasharray="3 5"/>
-              <path d="M60 44c-3 0-5 2-5 4.5 0 5 10 5 10 9.5 0 2.5-2 4.5-5 4.5s-5-1.5-5-3.5M60 44v-3M60 65.5V63" stroke="#8A5300" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <h3>Settle &amp; Enjoy</h3>
-          <p>Settle balances easily and unlock more rewards!</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="story">
-    <div class="container">
-      <div class="founder-note">
-        <p>We built Meowes because splitting bills with friends always felt like a chore wrapped in awkward reminders. So we gave the app a reason to open that has nothing to do with money: a small cat who's happy to see you, paid up or not.</p>
-        <div class="signoff">&mdash; The Meowes team</div>
-      </div>
-    </div>
-  </section>
-
-  <section id="faq">
-    <div class="container">
-      <div class="section-header">
-        <h2>Questions, Answered <span class="paw"><svg width="18" height="18" viewBox="0 0 24 24" fill="var(--accent-text)"><ellipse cx="12" cy="16.5" rx="6" ry="5"/><circle cx="5.5" cy="9" r="2.4"/><circle cx="10.5" cy="5.5" r="2.4"/><circle cx="15.5" cy="5.5" r="2.4"/><circle cx="18.5" cy="9" r="2.4"/></svg></span></h2>
-      </div>
-      <div class="faq-list">
-        <details class="faq-item">
-          <summary>When can I download Meowes?<span class="faq-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-          <p>We're finishing testing right now. Follow along and we'll share the moment it's live on iOS and Android.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Is Meowes free?<span class="faq-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-          <p>Yes. Adding friends, splitting expenses, and caring for your cat are all free.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Which platforms will it support?<span class="faq-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-          <p>iOS and Android at launch, with your account synced across both.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Is my expense data private?<span class="faq-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-          <p>Yes. Your balances and expenses are only visible to the friends and groups you choose to share them with.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Why a virtual cat?<span class="faq-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-          <p>Splitting bills is a chore. Settling up also feeds, pets, and levels up your cat, so there's a reason to open the app beyond owing someone money.</p>
-        </details>
-      </div>
-    </div>
-  </section>
-
-  <section aria-labelledby="cta-heading">
-    <div class="container">
-      <div class="cta-band">
-        <div class="cta-band-visual" aria-hidden="true">
-          <svg width="150" height="150" viewBox="0 0 150 150" fill="none">
-            <ellipse cx="75" cy="132" rx="46" ry="8" fill="rgba(0,0,0,0.15)"/>
-            <rect x="30" y="30" width="76" height="60" rx="10" fill="#17171A"/>
-            <rect x="38" y="38" width="60" height="42" rx="4" fill="#FFF3EA"/>
-            <circle cx="68" cy="55" r="4" fill="#17171A"/>
-            <circle cx="80" cy="55" r="4" fill="#17171A"/>
-            <path d="M64 65c3 3 11 3 14 0" stroke="#17171A" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-            <rect x="34" y="92" width="68" height="14" rx="4" fill="#E8480F"/>
-            <rect x="40" y="95" width="56" height="7" rx="2" fill="#FFC9A6"/>
-            <rect x="58" y="106" width="20" height="12" fill="#B93A0D"/>
-          </svg>
-        </div>
-        <div>
-          <h2 id="cta-heading">Ready to make every expense a purr-fect experience?</h2>
-          <p class="sub">Be one of the first to split bills and raise a cat together.</p>
-          <div class="cta-band-row">
-            <a href="#" class="store-badge apple">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16.365 1.43c0 1.14-.475 2.163-1.244 2.955-.845.868-2.234 1.53-3.36 1.44-.147-1.09.404-2.24 1.19-3.02.83-.83 2.29-1.46 3.414-1.375zm4.14 15.62c-.45 1.02-.664 1.47-1.24 2.37-.803 1.25-1.936 2.81-3.34 2.82-1.25.02-1.57-.82-3.27-.81-1.7.01-2.06.83-3.31.81-1.4-.02-2.47-1.42-3.28-2.67-2.25-3.47-2.49-7.55-1.1-9.72.99-1.55 2.55-2.46 4.02-2.46 1.5 0 2.44.83 3.68.83 1.2 0 1.94-.83 3.68-.83 1.31 0 2.7.71 3.69 1.94-3.25 1.78-2.72 6.42.46 7.71z"/></svg>
-              <span class="store-badge-text"><span class="small">Download on the</span><span class="big">App Store</span></span>
-            </a>
-            <a href="#" class="store-badge google">
-              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#00D9FF" d="M3.6 2.6c-.4.3-.6.8-.6 1.4v16c0 .6.2 1.1.6 1.4L13 12 3.6 2.6z"/><path fill="#00F076" d="M16.8 8.8 13 12l3.8 3.2 4.4-2.5c.7-.4.7-1.5 0-1.9l-4.4-2z"/><path fill="#FF3A44" d="M3.6 2.6 13 12l3.8-3.2-11.7-6.6c-.5-.3-1.1-.2-1.5.4z"/><path fill="#FFCF00" d="M3.6 21.4c.4.3 1 .3 1.5 0l11.7-6.6L13 12 3.6 21.4z"/></svg>
-              <span class="store-badge-text"><span class="small">GET IT ON</span><span class="big">Google Play</span></span>
-            </a>
-          </div>
-        </div>
-        <svg class="cta-heart" viewBox="0 0 24 24" fill="white"><path d="M12 21s-7.5-4.6-10-9.3C.5 8 2.3 4.5 6 4c2-.3 3.7.7 6 3 2.3-2.3 4-3.3 6-3 3.7.5 5.5 4 4 7.7-2.5 4.7-10 9.3-10 9.3z"/></svg>
-      </div>
-    </div>
-  </section>
-
-  <footer>
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-brand">
-          <a href="#" class="logo" style="margin-bottom: 0;">
-            <span class="logo-mark">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <rect x="4" y="9" width="16" height="12" rx="6" fill="#FF6A1A"/>
-                <circle cx="9.5" cy="15" r="1.2" fill="#17171A"/>
-                <circle cx="14.5" cy="15" r="1.2" fill="#17171A"/>
-              </svg>
-            </span>
-            <span>Meowes</span>
-          </a>
-          <p>Split expenses, care for your cat, and grow together.</p>
-        </div>
-        <div class="footer-col">
-          <h4>Product</h4>
-          <ul>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#how">How it works</a></li>
-            <li><a href="#faq">FAQ</a></li>
-            <li><a href="#download">Download</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Company</h4>
-          <ul>
-            <li><a href="/legal/support.html">Support</a></li>
-            <li><a href="/legal/support.html">Contact</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Legal</h4>
-          <ul>
-            <li><a href="/legal/privacy.html">Privacy Policy</a></li>
-            <li><a href="/legal/terms.html">Terms of Service</a></li>
-            <li><a href="/legal/delete-account.html">Delete your account</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>&copy; 2026 Meowes. Built with Flutter.</p>
-        <div class="footer-social">
-          <a href="#" aria-label="Twitter"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 9.724H17.927l-7.58-9.286L3.397 21.75H0L12.34-0.006h3.45L5.367 10.51l6.433 7.449H24L10.888 6.238 18.244 2.25z"/></svg></a>
-          <a href="#" aria-label="Instagram"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.85.07 1.17.05 1.97.24 2.43.4a4.9 4.9 0 0 1 1.77 1.15 4.9 4.9 0 0 1 1.15 1.77c.16.46.35 1.26.4 2.43.07 1.25.07 1.65.07 4.85s0 3.6-.07 4.85c-.05 1.17-.24 1.97-.4 2.43a4.9 4.9 0 0 1-1.15 1.77 4.9 4.9 0 0 1-1.77 1.15c-.46.16-1.26.35-2.43.4-1.25.07-1.65.07-4.85.07s-3.6 0-4.85-.07c-1.17-.05-1.97-.24-2.43-.4a4.9 4.9 0 0 1-1.77-1.15A4.9 4.9 0 0 1 1.8 19.7c-.16-.46-.35-1.26-.4-2.43C1.33 16 1.33 15.6 1.33 12.4s0-3.6.07-4.85c.05-1.17.24-1.97.4-2.43A4.9 4.9 0 0 1 2.95 3.35 4.9 4.9 0 0 1 4.72 2.2c.46-.16 1.26-.35 2.43-.4C8.4 1.73 8.8 1.73 12 1.73zm0 1.98c-3.14 0-3.51 0-4.75.07-1.04.05-1.6.22-1.97.36a3.3 3.3 0 0 0-1.22.79 3.3 3.3 0 0 0-.79 1.22c-.14.37-.31.93-.36 1.97-.06 1.24-.07 1.61-.07 4.75s0 3.51.07 4.75c.05 1.04.22 1.6.36 1.97.15.4.36.79.79 1.22.37.37.75.64 1.22.79.37.14.93.31 1.97.36 1.24.06 1.61.07 4.75.07s3.51 0 4.75-.07c1.04-.05 1.6-.22 1.97-.36a3.3 3.3 0 0 0 1.22-.79c.37-.37.64-.75.79-1.22.14-.37.31-.93.36-1.97.06-1.24.07-1.61.07-4.75s0-3.51-.07-4.75c-.05-1.04-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.93-.31-1.97-.36-1.24-.06-1.61-.07-4.75-.07z"/><circle cx="12" cy="12" r="3.2"/><circle cx="17.8" cy="6.2" r="1.1"/></svg></a>
-          <a href="#" aria-label="Discord"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.443.737-.696 1.093a19.275 19.275 0 0 0-5.493 0 12.63 12.63 0 0 0-.713-1.13.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.675 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.083.083 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 .734-.997.076.076 0 0 1 .075-.037c.326-.084.645-.083.971-.026a18.29 18.29 0 0 0 3.588 0 .077.077 0 0 1 .078.027 13.86 13.86 0 0 0 .706.97.077.077 0 0 0 .033.046 19.833 19.833 0 0 0 6.005-3.017.077.077 0 0 0 .033-.054c.47-4.977-.216-9.373-1.119-13.707a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></a>
-        </div>
-      </div>
-    </div>
-  </footer>
-
-  <script>
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function(e) {
-        const targetId = this.getAttribute('href');
-        if (targetId.length < 2) return;
-        const target = document.querySelector(targetId);
-        if (target) {
-          e.preventDefault();
-          const navHeight = document.querySelector('nav').offsetHeight;
-          const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - navHeight;
-          window.scrollTo({ top: targetPosition, behavior: 'smooth' });
-        }
-      });
-    });
-
-    const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.style.opacity = '1';
-          entry.target.style.transform = 'translateY(0)';
-        }
-      });
-    }, observerOptions);
-
-    document.querySelectorAll('.pet-showcase, .how-step').forEach(el => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(20px)';
-      el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-      observer.observe(el);
-    });
-  </script>
+    <div class="footer-bottom"><span>© 2026 Meowes. All rights reserved.</span><span>Shared fairly. Made with care.</span></div>
+  </div></footer>
 </body>
 </html>
