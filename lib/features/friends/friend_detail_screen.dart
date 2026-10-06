@@ -30,10 +30,14 @@ class FriendDetailScreen extends ConsumerWidget {
     final friendRepo = ref.read(friendRepositoryProvider);
     final me = client.auth.currentUser!.id;
     final profiles = await friendRepo.getPublicProfiles([friendUserId]);
-    final balance = ((await client.rpc('get_friend_balance', params: {
-      'user_a': me,
-      'user_b': friendUserId,
-    })) as num?)?.toDouble() ?? 0;
+    final balance =
+        ((await client.rpc(
+                  'get_friend_balance',
+                  params: {'user_a': me, 'user_b': friendUserId},
+                ))
+                as num?)
+            ?.toDouble() ??
+        0;
     return _FriendDetailData(
       name: profiles.isNotEmpty ? profiles.first.name : null,
       balance: balance,
@@ -41,7 +45,11 @@ class FriendDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _onMenu(
-      BuildContext context, WidgetRef ref, String action, String name) async {
+    BuildContext context,
+    WidgetRef ref,
+    String action,
+    String name,
+  ) async {
     if (action == 'report') {
       await showReportSheet(
         context,
@@ -58,9 +66,11 @@ class FriendDetailScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isBlock ? 'Block $name?' : 'Remove $name?'),
-        content: Text(isBlock
-            ? "$name won't be able to add you back or send you reminders. Your shared expense history stays."
-            : 'This removes the friendship. Your shared expense history stays.'),
+        content: Text(
+          isBlock
+              ? "$name won't be able to add you back or send you reminders. Your shared expense history stays."
+              : 'This removes the friendship. Your shared expense history stays.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -79,8 +89,9 @@ class FriendDetailScreen extends ConsumerWidget {
     final ok = await runAction(
       context,
       ref,
-      action: () =>
-          isBlock ? repo.blockUser(friendUserId) : repo.removeFriend(friendUserId),
+      action: () => isBlock
+          ? repo.blockUser(friendUserId)
+          : repo.removeFriend(friendUserId),
       successMessage: isBlock ? '$name blocked' : '$name removed',
     );
     if (ok && context.mounted) Navigator.of(context).pop();
@@ -94,7 +105,8 @@ class FriendDetailScreen extends ConsumerWidget {
     return FutureBuilder<_FriendDetailData>(
       future: _load(ref),
       builder: (context, snapshot) {
-        final data = snapshot.data ?? const _FriendDetailData(name: null, balance: 0);
+        final data =
+            snapshot.data ?? const _FriendDetailData(name: null, balance: 0);
         final balance = data.balance;
         // get_friend_balance(me, friend) is positive when the friend owes
         // me, negative when I owe the friend. Settling here means "I paid
@@ -103,11 +115,18 @@ class FriendDetailScreen extends ConsumerWidget {
         // the friend owes me would record a payment in the wrong direction.
         final iOwe = balance < -0.005;
         final theyOwe = balance > 0.005;
-        return GlassScaffold(
-          appBar: GlassAppBar(
-            title: data.name ?? 'Friend',
-            actions: [
-              PopupMenuButton<String>(
+        return DetailHeroScaffold(
+          heroAsset: 'assets/images/friend-detail-hero.png',
+          heroImageKey: const Key('friend-detail-hero-image'),
+          sheetKey: const Key('friend-detail-scroll-sheet'),
+          title: data.name ?? 'Friend',
+          actionBuilders: [
+            (context) => Material(
+              color: Colors.white.withValues(alpha: 0.92),
+              shape: const CircleBorder(),
+              child: PopupMenuButton<String>(
+                tooltip: 'More options',
+                icon: const Icon(Icons.more_horiz_rounded),
                 onSelected: (value) =>
                     _onMenu(context, ref, value, data.name ?? 'this person'),
                 itemBuilder: (_) => const [
@@ -116,73 +135,73 @@ class FriendDetailScreen extends ConsumerWidget {
                   PopupMenuItem(value: 'remove', child: Text('Remove friend')),
                 ],
               ),
-            ],
-          ),
-          body: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                BalanceSummaryCard(balance: balance),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
+            ),
+          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              BalanceSummaryCard(balance: balance),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: PillButton(
+                      label: 'Add expense',
+                      primary: true,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AddExpenseScreen(
+                            participantIds: [me, friendUserId],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (iOwe) ...[
+                    const SizedBox(width: 12),
                     Expanded(
                       child: PillButton(
-                        label: 'Add expense',
-                        primary: true,
+                        label: 'Settle up',
+                        primary: false,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => AddExpenseScreen(
-                              participantIds: [me, friendUserId],
+                            builder: (_) => SettleUpScreen(
+                              toUser: friendUserId,
+                              amountMinorUnits: (balance.abs() * 100).round(),
+                              toUserName: data.name,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    if (iOwe) ...[
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: PillButton(
-                          label: 'Settle up',
-                          primary: false,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => SettleUpScreen(
-                                toUser: friendUserId,
-                                amountMinorUnits: (balance.abs() * 100).round(),
-                                toUserName: data.name,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (theyOwe) ...[
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: PillButton(
-                          label: 'Remind',
-                          primary: false,
-                          onTap: () => runAction(
-                            context,
-                            ref,
-                            notifyData: false,
-                            action: () =>
-                                ref.read(friendRepositoryProvider).sendFriendRemind(friendUserId),
-                            successMessage: 'Reminder sent to ${data.name ?? "your friend"}',
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
-                ),
-                const SizedBox(height: 24),
-                _FriendActivitySection(
-                  friendUserId: friendUserId,
-                  friendName: data.name,
-                ),
-              ],
-            ),
+                  if (theyOwe) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: PillButton(
+                        label: 'Remind',
+                        primary: false,
+                        onTap: () => runAction(
+                          context,
+                          ref,
+                          notifyData: false,
+                          action: () => ref
+                              .read(friendRepositoryProvider)
+                              .sendFriendRemind(friendUserId),
+                          successMessage:
+                              'Reminder sent to ${data.name ?? "your friend"}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 24),
+              _FriendActivitySection(
+                friendUserId: friendUserId,
+                friendName: data.name,
+              ),
+            ],
           ),
         );
       },
@@ -198,13 +217,18 @@ class FriendDetailScreen extends ConsumerWidget {
 class _FriendActivitySection extends ConsumerStatefulWidget {
   final String friendUserId;
   final String? friendName;
-  const _FriendActivitySection({required this.friendUserId, required this.friendName});
+  const _FriendActivitySection({
+    required this.friendUserId,
+    required this.friendName,
+  });
 
   @override
-  ConsumerState<_FriendActivitySection> createState() => _FriendActivitySectionState();
+  ConsumerState<_FriendActivitySection> createState() =>
+      _FriendActivitySectionState();
 }
 
-class _FriendActivitySectionState extends ConsumerState<_FriendActivitySection> {
+class _FriendActivitySectionState
+    extends ConsumerState<_FriendActivitySection> {
   bool _showSettled = false;
 
   bool _isSettled(FriendActivityItem i) => i.net.abs() < 0.005;
@@ -212,16 +236,22 @@ class _FriendActivitySectionState extends ConsumerState<_FriendActivitySection> 
   Future<void> _openItem(BuildContext context, FriendActivityItem item) async {
     switch (item.kind) {
       case FriendActivityKind.group:
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => GroupDetailScreen(groupId: item.refId),
-        ));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GroupDetailScreen(groupId: item.refId),
+          ),
+        );
         break;
       case FriendActivityKind.expense:
-        final expense = await ref.read(expenseRepositoryProvider).getExpenseById(item.refId);
+        final expense = await ref
+            .read(expenseRepositoryProvider)
+            .getExpenseById(item.refId);
         if (!context.mounted) return;
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ExpenseDetailScreen(expense: expense),
-        ));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ExpenseDetailScreen(expense: expense),
+          ),
+        );
         break;
       case FriendActivityKind.settlement:
         break; // no detail screen for settlements
@@ -253,7 +283,9 @@ class _FriendActivitySectionState extends ConsumerState<_FriendActivitySection> 
           builder: (context, snapshot) {
             final all = snapshot.data ?? [];
             final hasSettled = all.any(_isSettled);
-            final visible = _showSettled ? all : all.where((i) => !_isSettled(i)).toList();
+            final visible = _showSettled
+                ? all
+                : all.where((i) => !_isSettled(i)).toList();
 
             if (all.isEmpty) {
               return const EmptyStateBox(
@@ -279,7 +311,8 @@ class _FriendActivitySectionState extends ConsumerState<_FriendActivitySection> 
                             item: visible[i],
                             icon: _iconFor(visible[i].kind),
                             friendName: widget.friendName,
-                            onTap: visible[i].kind == FriendActivityKind.settlement
+                            onTap:
+                                visible[i].kind == FriendActivityKind.settlement
                                 ? null
                                 : () => _openItem(context, visible[i]),
                           ),
@@ -293,10 +326,14 @@ class _FriendActivitySectionState extends ConsumerState<_FriendActivitySection> 
                     child: Align(
                       alignment: Alignment.center,
                       child: TextButton(
-                        onPressed: () => setState(() => _showSettled = !_showSettled),
+                        onPressed: () =>
+                            setState(() => _showSettled = !_showSettled),
                         child: Text(
                           _showSettled ? 'Hide settled' : 'Show settled',
-                          style: TextStyle(color: t.textSecondary, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: t.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -354,7 +391,11 @@ class _ActivityRow extends StatelessWidget {
                   children: [
                     Text(
                       item.name,
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: t.textPrimary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: t.textPrimary,
+                      ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
