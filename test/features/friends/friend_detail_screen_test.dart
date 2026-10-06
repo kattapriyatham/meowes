@@ -49,6 +49,10 @@ void main() {
     when(() => mockFriendRepo.getPublicProfiles(['friend-1'])).thenAnswer((_) async => []);
     when(() => mockExpenseRepo.getFriendActivity('friend-1')).thenAnswer((_) async => [
       FriendActivityItem(kind: FriendActivityKind.group, refId: 'g1', name: 'Goa Trip', net: -100.0, date: DateTime(2026, 7, 20)),
+      FriendActivityItem(
+        kind: FriendActivityKind.expense, refId: 'e1', name: 'Dinner', net: 50.0,
+        date: DateTime(2020, 7, 20), addedAt: DateTime(2020, 7, 20, 14, 30), paidByMe: true,
+      ),
       FriendActivityItem(kind: FriendActivityKind.group, refId: 'g2', name: 'Flatmates', net: 0.0, date: DateTime(2026, 7, 10)),
     ]);
 
@@ -64,6 +68,7 @@ void main() {
 
     expect(find.text('Goa Trip'), findsOneWidget);
     expect(find.text('Flatmates'), findsNothing); // net 0 hidden
+    expect(find.text('Paid by you · Added 20 Jul 2020, 2:30 PM'), findsOneWidget);
 
     await tester.tap(find.text('Show settled'));
     await tester.pumpAndSettle();

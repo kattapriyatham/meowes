@@ -96,7 +96,7 @@ class ExpenseRepository {
     final items = results
         .map((r) => FriendActivityItem.fromJson(r as Map<String, dynamic>))
         .toList();
-    items.sort((a, b) => b.date.compareTo(a.date));
+    items.sort((a, b) => b.sortTime.compareTo(a.sortTime));
     return items;
   }
 

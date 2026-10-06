@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/async_action.dart';
+import 'package:meowes_app/core/format_added.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/features/moderation/report_sheet.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
@@ -176,7 +177,10 @@ class FriendDetailScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                _FriendActivitySection(friendUserId: friendUserId),
+                _FriendActivitySection(
+                  friendUserId: friendUserId,
+                  friendName: data.name,
+                ),
               ],
             ),
           ),
@@ -193,7 +197,8 @@ class FriendDetailScreen extends ConsumerWidget {
 /// reconcile to the balance card above.
 class _FriendActivitySection extends ConsumerStatefulWidget {
   final String friendUserId;
-  const _FriendActivitySection({required this.friendUserId});
+  final String? friendName;
+  const _FriendActivitySection({required this.friendUserId, required this.friendName});
 
   @override
   ConsumerState<_FriendActivitySection> createState() => _FriendActivitySectionState();
@@ -273,6 +278,7 @@ class _FriendActivitySectionState extends ConsumerState<_FriendActivitySection> 
                           _ActivityRow(
                             item: visible[i],
                             icon: _iconFor(visible[i].kind),
+                            friendName: widget.friendName,
                             onTap: visible[i].kind == FriendActivityKind.settlement
                                 ? null
                                 : () => _openItem(context, visible[i]),
@@ -307,12 +313,31 @@ class _FriendActivitySectionState extends ConsumerState<_FriendActivitySection> 
 class _ActivityRow extends StatelessWidget {
   final FriendActivityItem item;
   final IconData icon;
+  final String? friendName;
   final VoidCallback? onTap;
-  const _ActivityRow({required this.item, required this.icon, required this.onTap});
+  const _ActivityRow({
+    required this.item,
+    required this.icon,
+    required this.friendName,
+    required this.onTap,
+  });
+
+  String? _subtitle() {
+    final parts = <String>[];
+    final paidByMe = item.paidByMe;
+    if (paidByMe != null) {
+      final payer = paidByMe ? 'you' : (friendName ?? 'them');
+      parts.add('Paid by $payer');
+    }
+    final added = item.addedAt;
+    if (added != null) parts.add('Added ${formatAdded(added)}');
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<GlassTokens>()!;
+    final subtitle = _subtitle();
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -324,9 +349,21 @@ class _ActivityRow extends StatelessWidget {
               Icon(icon, color: t.textSecondary),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  item.name,
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: t.textPrimary),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: t.textPrimary),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(fontSize: 12, color: t.textSecondary),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               BalanceAmount(balance: item.net),

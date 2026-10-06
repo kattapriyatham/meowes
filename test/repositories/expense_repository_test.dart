@@ -196,4 +196,22 @@ void main() {
     expect(items.last.name, 'Old');
     expect(items.first.kind, FriendActivityKind.group);
   });
+
+  test('getFriendActivity orders same-day rows by added_at, newest first', () async {
+    final client = MockSupabaseClient();
+    when(() => client.rpc('get_friend_activity',
+            params: {'other_user': 'friend-1'}))
+        .thenAnswer((_) => _FakeRpcResult([
+      {'kind': 'expense', 'ref_id': 'e1', 'name': 'Morning', 'net': 1.0,
+       'activity_date': '2026-09-05', 'added_at': '2026-09-05T03:00:00Z', 'paid_by_me': true},
+      {'kind': 'expense', 'ref_id': 'e2', 'name': 'Evening', 'net': 1.0,
+       'activity_date': '2026-09-05', 'added_at': '2026-09-05T15:00:00Z', 'paid_by_me': false},
+      {'kind': 'settlement', 'ref_id': 's1', 'name': 'Payment', 'net': 1.0,
+       'activity_date': '2026-09-05', 'added_at': '2026-09-05T09:00:00Z', 'paid_by_me': true},
+    ]));
+
+    final items = await ExpenseRepository(client).getFriendActivity('friend-1');
+
+    expect(items.map((i) => i.name), ['Evening', 'Payment', 'Morning']);
+  });
 }

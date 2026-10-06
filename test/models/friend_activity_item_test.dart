@@ -28,4 +28,32 @@ void main() {
     expect(item.kind, FriendActivityKind.expense);
     expect(item.net, 100.00);
   });
+
+  test('FriendActivityItem.fromJson parses added_at and paid_by_me', () {
+    final item = FriendActivityItem.fromJson({
+      'kind': 'expense',
+      'ref_id': 'e1',
+      'name': 'Dinner',
+      'net': '50.00',
+      'activity_date': '2026-09-05',
+      'added_at': '2026-09-05T09:00:00Z',
+      'paid_by_me': false,
+    });
+    expect(item.addedAt!.isAtSameMomentAs(DateTime.utc(2026, 9, 5, 9)), isTrue);
+    expect(item.paidByMe, false);
+  });
+
+  test('FriendActivityItem.fromJson tolerates missing added_at / paid_by_me', () {
+    final item = FriendActivityItem.fromJson({
+      'kind': 'group',
+      'ref_id': 'g1',
+      'name': 'Trip',
+      'net': 0,
+      'activity_date': '2026-09-05',
+      'added_at': null,
+      'paid_by_me': null,
+    });
+    expect(item.addedAt, isNull);
+    expect(item.paidByMe, isNull);
+  });
 }

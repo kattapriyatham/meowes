@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meowes_app/core/async_action.dart';
+import 'package:meowes_app/core/format_added.dart';
 import 'package:meowes_app/core/supabase_client.dart';
 import 'package:meowes_app/core/theme/glass_tokens.dart';
 import 'package:meowes_app/core/widgets/widgets.dart';
@@ -29,7 +30,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
     final friendRepo = ref.read(friendRepositoryProvider);
     final freshExpense = await repo.getExpenseById(expense.id);
     final splits = await repo.getExpenseSplits(expense.id);
-    final participantIds = splits.map((s) => s.userId).toList();
+    final participantIds = {...splits.map((s) => s.userId), freshExpense.paidBy}.toList();
     final profiles =
         participantIds.isEmpty ? <AppUser>[] : await friendRepo.getPublicProfiles(participantIds);
     final namesById = {for (final p in profiles) p.id: p.name};
@@ -47,7 +48,9 @@ class ExpenseDetailScreen extends ConsumerWidget {
         final data = snapshot.data ??
             _ExpenseDetailData(expense: expense, splits: const [], namesById: const {});
         final current = data.expense;
+        final me = ref.watch(supabaseClientProvider).auth.currentUser?.id;
         String nameOf(String id) => data.namesById[id] ?? 'Unknown';
+        final payer = current.paidBy == me ? 'You' : nameOf(current.paidBy);
 
         return GlassScaffold(
           appBar: GlassAppBar(
@@ -74,6 +77,16 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   Text(
                     '₹${(current.amountMinorUnits / 100).toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: t.textPrimary),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Paid by $payer',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: t.textSecondary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Added ${formatAdded(current.createdAt)}',
+                    style: TextStyle(fontSize: 13, color: t.textMuted),
                   ),
                   const SizedBox(height: 4),
                   if (current.isEdited)
