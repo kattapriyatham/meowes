@@ -71,7 +71,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
         final payer = current.paidBy == me ? 'You' : nameOf(current.paidBy);
 
         return DetailHeroScaffold(
-          heroAsset: 'assets/images/expense-detail-hero.png',
+          heroAsset: 'assets/images/expense-detail-hero-v2.png',
           heroImageKey: const Key('expense-detail-hero-image'),
           sheetKey: const Key('expense-detail-scroll-sheet'),
           title: current.description,

@@ -116,7 +116,7 @@ class FriendDetailScreen extends ConsumerWidget {
         final iOwe = balance < -0.005;
         final theyOwe = balance > 0.005;
         return DetailHeroScaffold(
-          heroAsset: 'assets/images/friend-detail-hero.png',
+          heroAsset: 'assets/images/friend-detail-hero-v2.png',
           heroImageKey: const Key('friend-detail-hero-image'),
           sheetKey: const Key('friend-detail-scroll-sheet'),
           title: data.name ?? 'Friend',
