@@ -14,8 +14,11 @@ import 'package:meowes_app/repositories/expense_repository.dart';
 import 'package:meowes_app/repositories/friend_repository.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
+
 class MockGoTrueClient extends Mock implements GoTrueClient {}
+
 class MockExpenseRepository extends Mock implements ExpenseRepository {}
+
 class MockFriendRepository extends Mock implements FriendRepository {}
 
 // from('group_members').select('user_id').eq('group_id', ...) resolves to a
@@ -24,16 +27,21 @@ class _FakeQueryBuilder extends Fake implements SupabaseQueryBuilder {
   final List<Map<String, dynamic>> value;
   _FakeQueryBuilder(this.value);
   @override
-  PostgrestFilterBuilder<PostgrestList> select([String columns = '*']) => _FakeSelect(value);
+  PostgrestFilterBuilder<PostgrestList> select([String columns = '*']) =>
+      _FakeSelect(value);
 }
 
-class _FakeSelect extends Fake implements PostgrestFilterBuilder<PostgrestList> {
+class _FakeSelect extends Fake
+    implements PostgrestFilterBuilder<PostgrestList> {
   final List<Map<String, dynamic>> value;
   _FakeSelect(this.value);
   @override
   PostgrestFilterBuilder<PostgrestList> eq(String column, Object val) => this;
   @override
-  Future<U> then<U>(FutureOr<U> Function(PostgrestList) onValue, {Function? onError}) {
+  Future<U> then<U>(
+    FutureOr<U> Function(PostgrestList) onValue, {
+    Function? onError,
+  }) {
     return Future.value(value).then(onValue, onError: onError);
   }
 }
@@ -43,7 +51,10 @@ class _FakeRpcResult extends Fake implements PostgrestFilterBuilder<dynamic> {
   final dynamic value;
   _FakeRpcResult(this.value);
   @override
-  Future<U> then<U>(FutureOr<U> Function(dynamic) onValue, {Function? onError}) {
+  Future<U> then<U>(
+    FutureOr<U> Function(dynamic) onValue, {
+    Function? onError,
+  }) {
     return Future.value(value).then(onValue, onError: onError);
   }
 }
@@ -51,38 +62,66 @@ class _FakeRpcResult extends Fake implements PostgrestFilterBuilder<dynamic> {
 void main() {
   setUpAll(() => TestWidgetsFlutterBinding.ensureInitialized());
 
-  testWidgets('Group screen shows an add-expense FAB once members load', (tester) async {
+  testWidgets('Group screen shows an add-expense FAB once members load', (
+    tester,
+  ) async {
     final mockClient = MockSupabaseClient();
     final mockAuth = MockGoTrueClient();
     final mockExpenseRepo = MockExpenseRepository();
     final mockFriendRepo = MockFriendRepository();
 
     when(() => mockClient.auth).thenReturn(mockAuth);
-    when(() => mockAuth.currentUser).thenReturn(User(
-      id: 'me', appMetadata: const {}, userMetadata: const {},
-      aud: 'authenticated', createdAt: '2026-07-27T00:00:00Z',
-    ));
-    when(() => mockClient.from('group_members'))
-        .thenAnswer((_) => _FakeQueryBuilder([{'user_id': 'me'}, {'user_id': 'friend-1'}]));
-    when(() => mockClient.rpc('get_group_debts', params: {'target_group_id': 'g1'}))
-        .thenAnswer((_) => _FakeRpcResult(<dynamic>[]));
-    when(() => mockFriendRepo.getPublicProfiles(any())).thenAnswer((_) async => []);
-    when(() => mockExpenseRepo.watchExpenses(groupId: 'g1'))
-        .thenAnswer((_) => Stream<List<Expense>>.value([]));
+    when(() => mockAuth.currentUser).thenReturn(
+      User(
+        id: 'me',
+        appMetadata: const {},
+        userMetadata: const {},
+        aud: 'authenticated',
+        createdAt: '2026-07-27T00:00:00Z',
+      ),
+    );
+    when(() => mockClient.from('group_members')).thenAnswer(
+      (_) => _FakeQueryBuilder([
+        {'user_id': 'me'},
+        {'user_id': 'friend-1'},
+      ]),
+    );
+    when(
+      () =>
+          mockClient.rpc('get_group_debts', params: {'target_group_id': 'g1'}),
+    ).thenAnswer((_) => _FakeRpcResult(<dynamic>[]));
+    when(
+      () => mockFriendRepo.getPublicProfiles(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockExpenseRepo.watchExpenses(groupId: 'g1'),
+    ).thenAnswer((_) => Stream<List<Expense>>.value([]));
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        supabaseClientProvider.overrideWithValue(mockClient),
-        expenseRepositoryProvider.overrideWithValue(mockExpenseRepo),
-        friendRepositoryProvider.overrideWithValue(mockFriendRepo),
-      ],
-      child: MaterialApp(theme: AppTheme.light, home: const GroupDetailScreen(groupId: 'g1')),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          supabaseClientProvider.overrideWithValue(mockClient),
+          expenseRepositoryProvider.overrideWithValue(mockExpenseRepo),
+          friendRepositoryProvider.overrideWithValue(mockFriendRepo),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const GroupDetailScreen(groupId: 'g1'),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('group-detail-hero-image')), findsOneWidget);
+    expect(find.byKey(const Key('group-detail-scroll-sheet')), findsOneWidget);
+    expect(find.byKey(const Key('detail-sheet-toolbar')), findsOneWidget);
+    expect(find.byType(DraggableScrollableSheet), findsOneWidget);
     final fab = find.byType(FloatingActionButton);
     expect(fab, findsOneWidget);
-    expect(find.descendant(of: fab, matching: find.byIcon(Icons.add)), findsOneWidget);
+    expect(
+      find.descendant(of: fab, matching: find.byIcon(Icons.add)),
+      findsOneWidget,
+    );
     expect(tester.widget<FloatingActionButton>(fab).onPressed, isNotNull);
   });
 }

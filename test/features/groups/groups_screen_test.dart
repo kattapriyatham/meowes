@@ -10,7 +10,9 @@ import 'package:meowes_app/features/groups/groups_screen.dart';
 import 'package:meowes_app/repositories/group_repository.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
+
 class MockGoTrueClient extends Mock implements GoTrueClient {}
+
 class MockGroupRepository extends Mock implements GroupRepository {}
 
 void main() {
@@ -34,9 +36,9 @@ void main() {
       ),
     );
 
-    when(() => mockGroupRepo.watchMyGroups()).thenAnswer(
-      (_) => Stream.value([]),
-    );
+    when(
+      () => mockGroupRepo.watchMyGroups(),
+    ).thenAnswer((_) => Stream.value([]));
 
     await tester.pumpWidget(
       ProviderScope(
@@ -50,5 +52,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Groups'), findsWidgets);
+    expect(find.byKey(const Key('groups-hero-image')), findsOneWidget);
+    expect(find.byKey(const Key('groups-scroll-sheet')), findsOneWidget);
+    expect(find.byType(DraggableScrollableSheet), findsOneWidget);
   });
 }

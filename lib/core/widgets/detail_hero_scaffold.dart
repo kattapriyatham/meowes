@@ -13,6 +13,7 @@ class DetailHeroScaffold extends StatelessWidget {
     required this.sheetKey,
     required this.title,
     required this.child,
+    this.floatingActionButton,
     this.actionBuilders = const [],
   });
 
@@ -21,6 +22,7 @@ class DetailHeroScaffold extends StatelessWidget {
   final Key sheetKey;
   final String title;
   final Widget child;
+  final Widget? floatingActionButton;
   final List<WidgetBuilder> actionBuilders;
 
   @override
@@ -146,6 +148,12 @@ class DetailHeroScaffold extends StatelessWidget {
                           actionBuilders: actionBuilders,
                         ),
                       ),
+                      if (floatingActionButton != null)
+                        Positioned(
+                          right: 20,
+                          bottom: 20,
+                          child: floatingActionButton!,
+                        ),
                     ],
                   ),
                 ),
